@@ -37,3 +37,10 @@
 #include <builtinFonts/ubuntu_10_regular.h>
 #include <builtinFonts/ubuntu_12_bold.h>
 #include <builtinFonts/ubuntu_12_regular.h>
+// ========== CJK 简中点阵字体 (from crossmux) ==========
+#include "notosans_cjk_8.h"
+#include "notosans_cjk_10.h"
+#include "notosans_cjk_12.h"
+#include "notosans_cjk_14.h"
+#include "notosans_cjk_16.h"
+#include "notosans_cjk_18.h"

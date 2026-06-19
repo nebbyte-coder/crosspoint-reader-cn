@@ -1,4 +1,4 @@
-#include <Arduino.h>
+﻿#include <Arduino.h>
 #include <Epub.h>
 #include <FontCacheManager.h>
 #include <FontDecompressor.h>
@@ -43,68 +43,68 @@ FontCacheManager fontCacheManager(renderer.getFontMap(), renderer.getSdCardFonts
 static unsigned long allowSleepAt = 0;
 
 // Fonts
-EpdFont notoserif14RegularFont(&notoserif_14_regular);
-EpdFont notoserif14BoldFont(&notoserif_14_bold);
-EpdFont notoserif14ItalicFont(&notoserif_14_italic);
-EpdFont notoserif14BoldItalicFont(&notoserif_14_bolditalic);
+EpdFont notoserif14RegularFont(&notosans_cjk_14);
+EpdFont notoserif14BoldFont(&notosans_cjk_14);
+EpdFont notoserif14ItalicFont(&notosans_cjk_14);
+EpdFont notoserif14BoldItalicFont(&notosans_cjk_14);
 EpdFontFamily notoserif14FontFamily(&notoserif14RegularFont, &notoserif14BoldFont, &notoserif14ItalicFont,
                                     &notoserif14BoldItalicFont);
 #ifndef OMIT_FONTS
-EpdFont notoserif12RegularFont(&notoserif_12_regular);
-EpdFont notoserif12BoldFont(&notoserif_12_bold);
-EpdFont notoserif12ItalicFont(&notoserif_12_italic);
-EpdFont notoserif12BoldItalicFont(&notoserif_12_bolditalic);
+EpdFont notoserif12RegularFont(&notosans_cjk_12);
+EpdFont notoserif12BoldFont(&notosans_cjk_12);
+EpdFont notoserif12ItalicFont(&notosans_cjk_12);
+EpdFont notoserif12BoldItalicFont(&notosans_cjk_12);
 EpdFontFamily notoserif12FontFamily(&notoserif12RegularFont, &notoserif12BoldFont, &notoserif12ItalicFont,
                                     &notoserif12BoldItalicFont);
-EpdFont notoserif16RegularFont(&notoserif_16_regular);
-EpdFont notoserif16BoldFont(&notoserif_16_bold);
-EpdFont notoserif16ItalicFont(&notoserif_16_italic);
-EpdFont notoserif16BoldItalicFont(&notoserif_16_bolditalic);
+EpdFont notoserif16RegularFont(&notosans_cjk_16);
+EpdFont notoserif16BoldFont(&notosans_cjk_16);
+EpdFont notoserif16ItalicFont(&notosans_cjk_16);
+EpdFont notoserif16BoldItalicFont(&notosans_cjk_16);
 EpdFontFamily notoserif16FontFamily(&notoserif16RegularFont, &notoserif16BoldFont, &notoserif16ItalicFont,
                                     &notoserif16BoldItalicFont);
-EpdFont notoserif18RegularFont(&notoserif_18_regular);
-EpdFont notoserif18BoldFont(&notoserif_18_bold);
-EpdFont notoserif18ItalicFont(&notoserif_18_italic);
-EpdFont notoserif18BoldItalicFont(&notoserif_18_bolditalic);
+EpdFont notoserif18RegularFont(&notosans_cjk_18);
+EpdFont notoserif18BoldFont(&notosans_cjk_18);
+EpdFont notoserif18ItalicFont(&notosans_cjk_18);
+EpdFont notoserif18BoldItalicFont(&notosans_cjk_18);
 EpdFontFamily notoserif18FontFamily(&notoserif18RegularFont, &notoserif18BoldFont, &notoserif18ItalicFont,
                                     &notoserif18BoldItalicFont);
 
-EpdFont notosans12RegularFont(&notosans_12_regular);
-EpdFont notosans12BoldFont(&notosans_12_bold);
-EpdFont notosans12ItalicFont(&notosans_12_italic);
-EpdFont notosans12BoldItalicFont(&notosans_12_bolditalic);
+EpdFont notosans12RegularFont(&notosans_cjk_12);
+EpdFont notosans12BoldFont(&notosans_cjk_12);
+EpdFont notosans12ItalicFont(&notosans_cjk_12);
+EpdFont notosans12BoldItalicFont(&notosans_cjk_12);
 EpdFontFamily notosans12FontFamily(&notosans12RegularFont, &notosans12BoldFont, &notosans12ItalicFont,
                                    &notosans12BoldItalicFont);
-EpdFont notosans14RegularFont(&notosans_14_regular);
-EpdFont notosans14BoldFont(&notosans_14_bold);
-EpdFont notosans14ItalicFont(&notosans_14_italic);
-EpdFont notosans14BoldItalicFont(&notosans_14_bolditalic);
+EpdFont notosans14RegularFont(&notosans_cjk_14);
+EpdFont notosans14BoldFont(&notosans_cjk_14);
+EpdFont notosans14ItalicFont(&notosans_cjk_14);
+EpdFont notosans14BoldItalicFont(&notosans_cjk_14);
 EpdFontFamily notosans14FontFamily(&notosans14RegularFont, &notosans14BoldFont, &notosans14ItalicFont,
                                    &notosans14BoldItalicFont);
-EpdFont notosans16RegularFont(&notosans_16_regular);
-EpdFont notosans16BoldFont(&notosans_16_bold);
-EpdFont notosans16ItalicFont(&notosans_16_italic);
-EpdFont notosans16BoldItalicFont(&notosans_16_bolditalic);
+EpdFont notosans16RegularFont(&notosans_cjk_16);
+EpdFont notosans16BoldFont(&notosans_cjk_16);
+EpdFont notosans16ItalicFont(&notosans_cjk_16);
+EpdFont notosans16BoldItalicFont(&notosans_cjk_16);
 EpdFontFamily notosans16FontFamily(&notosans16RegularFont, &notosans16BoldFont, &notosans16ItalicFont,
                                    &notosans16BoldItalicFont);
-EpdFont notosans18RegularFont(&notosans_18_regular);
-EpdFont notosans18BoldFont(&notosans_18_bold);
-EpdFont notosans18ItalicFont(&notosans_18_italic);
-EpdFont notosans18BoldItalicFont(&notosans_18_bolditalic);
+EpdFont notosans18RegularFont(&notosans_cjk_18);
+EpdFont notosans18BoldFont(&notosans_cjk_18);
+EpdFont notosans18ItalicFont(&notosans_cjk_18);
+EpdFont notosans18BoldItalicFont(&notosans_cjk_18);
 EpdFontFamily notosans18FontFamily(&notosans18RegularFont, &notosans18BoldFont, &notosans18ItalicFont,
                                    &notosans18BoldItalicFont);
 
 #endif  // OMIT_FONTS
 
-EpdFont smallFont(&notosans_8_regular);
+EpdFont smallFont(&notosans_cjk_8);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ui10RegularFont(&ubuntu_10_regular);
-EpdFont ui10BoldFont(&ubuntu_10_bold);
+EpdFont ui10RegularFont(&notosans_cjk_10);
+EpdFont ui10BoldFont(&notosans_cjk_10);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&ubuntu_12_regular);
-EpdFont ui12BoldFont(&ubuntu_12_bold);
+EpdFont ui12RegularFont(&notosans_cjk_12);
+EpdFont ui12BoldFont(&notosans_cjk_12);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 // measurement of power button press duration calibration value
@@ -308,7 +308,7 @@ void setup() {
 #ifdef ENABLE_SERIAL_LOG
   // Earliest possible Serial setup. The 250 ms stall before begin() lets the
   // USB Serial/JTAG peripheral finish power-on and lets the host complete USB
-  // enumeration before we touch the CDC state — otherwise cold boot races
+  // enumeration before we touch the CDC state 鈥?otherwise cold boot races
   // and the host has to be physically replugged for logs to flow. Warm reboot
   // worked without the delay because USB was already enumerated.
   delay(250);
@@ -319,7 +319,7 @@ void setup() {
   HalSystem::begin();
 
   // Read-and-clear so a panic later in setup() doesn't loop into silent reboot.
-  // Bound the target range too — RTC_NOINIT memory is uninitialized on cold boot.
+  // Bound the target range too 鈥?RTC_NOINIT memory is uninitialized on cold boot.
   const bool isSilentReboot = (silentRebootMagic == SILENT_REBOOT_MAGIC);
   const uint32_t snapshotTarget =
       (isSilentReboot && silentRebootTarget <= SILENT_REBOOT_TARGET_READER) ? silentRebootTarget : 0;
@@ -377,7 +377,7 @@ void setup() {
   // flashing has been locked down (e.g. recent X3 firmware).
   bool recoveryFirmwareMode = false;
   if (wakeupReason == HalGPIO::WakeupReason::PowerButton) {
-    // Refresh the cached button state a few times — isPressed() needs ~half a second to settle
+    // Refresh the cached button state a few times 鈥?isPressed() needs ~half a second to settle
     // after boot per the HalGPIO contract. Use a millis-based deadline so we always wait the full
     // settle window even if the loop body takes longer than expected on slow boots.
     const unsigned long settleStart = millis();
@@ -440,7 +440,7 @@ void setup() {
              !APP_STATE.openEpubPath.empty()) {
     activityManager.goToReader(APP_STATE.openEpubPath);
   } else if (resume == BootResume::Silent) {
-    // target == home (or reader with no open book): land on home — don't fall
+    // target == home (or reader with no open book): land on home 鈥?don't fall
     // through to the sleep-wake "resume reader" logic, which fires on stale
     // openEpubPath + lastSleepFromReader from a prior session.
     activityManager.goHome();
