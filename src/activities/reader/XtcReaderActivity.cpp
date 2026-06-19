@@ -22,6 +22,8 @@
 #include "XtcReaderChapterSelectionActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "EpubReaderPercentSelectionActivity.h"
+#include "XtcReaderMenuActivity.h"
 
 void XtcReaderActivity::onEnter() {
   Activity::onEnter();
@@ -53,17 +55,18 @@ void XtcReaderActivity::onExit() {
 }
 
 void XtcReaderActivity::loop() {
-  // Enter chapter selection activity
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    if (xtc && xtc->hasChapters() && !xtc->getChapters().empty()) {
+    if (xtc) {
       startActivityForResult(
-          std::make_unique<XtcReaderChapterSelectionActivity>(renderer, mappedInput, xtc, currentPage),
+          std::make_unique<XtcReaderMenuActivity>(renderer, mappedInput, xtc->getTitle()),
           [this](const ActivityResult& result) {
             if (!result.isCancelled) {
-              currentPage = std::get<PageResult>(result.data).page;
+              const auto& menu = std::get<MenuResult>(result.data);  
+              onXtcReaderMenuConfirm(menu.action);
             }
           });
     }
+    return;
   }
 
   // Long press BACK (1s+) goes to file selection
@@ -420,4 +423,49 @@ ScreenshotInfo XtcReaderActivity::getScreenshotInfo() const {
     info.currentPage = currentPage + 1;
   }
   return info;
+}
+void XtcReaderActivity::onXtcReaderMenuConfirm(int action) {
+  switch (action) {
+    case XtcReaderMenuActivity::ACTION_SELECT_CHAPTER: {
+      if (xtc && xtc->hasChapters() && !xtc->getChapters().empty()) {
+        startActivityForResult(
+            std::make_unique<XtcReaderChapterSelectionActivity>(renderer, mappedInput, xtc, currentPage),
+            [this](const ActivityResult& result) {
+              if (!result.isCancelled) {
+                currentPage = std::get<PageResult>(result.data).page;
+                requestUpdate();
+              }
+            });
+      }
+      break;
+    }
+    case XtcReaderMenuActivity::ACTION_GO_TO_PERCENT: {
+      const int totalPages = static_cast<int>(xtc->getPageCount());
+      const int initialPercent = totalPages > 0 ? static_cast<int>(currentPage * 100.0f / totalPages + 0.5f) : 0;
+      startActivityForResult(
+          std::make_unique<EpubReaderPercentSelectionActivity>(renderer, mappedInput, initialPercent),
+          [this](const ActivityResult& result) {
+            if (!result.isCancelled) {
+              const int percent = std::get<PercentResult>(result.data).percent;
+              jumpToPercent(percent);
+            }
+          });
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+void XtcReaderActivity::jumpToPercent(int percent) {
+  if (!xtc) return;
+  const int totalPages = static_cast<int>(xtc->getPageCount());
+  if (totalPages == 0) return;
+  percent = std::max(0, std::min(100, percent));
+  uint32_t targetPage = static_cast<uint32_t>(percent * totalPages / 100);
+  if (targetPage >= xtc->getPageCount()) {
+    targetPage = xtc->getPageCount() - 1;
+  }
+  currentPage = targetPage;
+  requestUpdate();
 }

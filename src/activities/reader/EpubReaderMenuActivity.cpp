@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <I18n.h>
+
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
@@ -71,8 +72,7 @@ void EpubReaderMenuActivity::loop() {
       selectedPageTurnOption = (selectedPageTurnOption + 1) % pageTurnLabels.size();
       requestUpdate();
       return;
-    }
-    else if (selectedAction == MenuAction::TEXT_AA) {
+    } else if (selectedAction == MenuAction::TEXT_AA) {
       SETTINGS.textAntiAliasing = !SETTINGS.textAntiAliasing;
       requestUpdate();
       return;

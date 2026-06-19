@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "activities/Activity.h"
+#include "XtcReaderMenuActivity.h"
 
 class XtcReaderActivity final : public Activity {
   std::shared_ptr<Xtc> xtc;
@@ -32,6 +33,8 @@ class XtcReaderActivity final : public Activity {
   StatusBarInfo getStatusBarInfo() const;
   void saveProgress() const;
   void loadProgress();
+  void onXtcReaderMenuConfirm(int action);
+  void jumpToPercent(int percent);
 
  public:
   explicit XtcReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Xtc> xtc)
