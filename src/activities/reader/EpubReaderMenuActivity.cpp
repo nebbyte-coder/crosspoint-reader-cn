@@ -2,7 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <I18n.h>
-
+#include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -35,6 +35,7 @@ std::vector<EpubReaderMenuActivity::MenuItem> EpubReaderMenuActivity::buildMenuI
   items.push_back({MenuAction::GO_HOME, StrId::STR_GO_HOME_BUTTON});
   items.push_back({MenuAction::SYNC, StrId::STR_SYNC_PROGRESS});
   items.push_back({MenuAction::DELETE_CACHE, StrId::STR_DELETE_CACHE});
+  items.push_back({MenuAction::TEXT_AA, StrId::STR_TEXT_AA});
   return items;
 }
 
@@ -68,6 +69,11 @@ void EpubReaderMenuActivity::loop() {
 
     if (selectedAction == MenuAction::AUTO_PAGE_TURN) {
       selectedPageTurnOption = (selectedPageTurnOption + 1) % pageTurnLabels.size();
+      requestUpdate();
+      return;
+    }
+    else if (selectedAction == MenuAction::TEXT_AA) {
+      SETTINGS.textAntiAliasing = !SETTINGS.textAntiAliasing;
       requestUpdate();
       return;
     }
@@ -121,6 +127,8 @@ void EpubReaderMenuActivity::render(RenderLock&&) {
         } else if (value == MenuAction::AUTO_PAGE_TURN) {
           // Render current page turn value on the right edge of the content area.
           return pageTurnLabels[selectedPageTurnOption];
+        } else if (value == MenuAction::TEXT_AA) {
+          return I18N.get(SETTINGS.textAntiAliasing ? StrId::STR_STATE_ON : StrId::STR_STATE_OFF);
         } else {
           return "";
         }
