@@ -1,6 +1,6 @@
 # CrossPoint Reader 中文版 (chinese-support)
 
-本固件基于 crosspoint-reader/crosspoint-reader上游源码，适配了**简体中文界面**与**CJK 点阵字体**，使设备能够完整显示中文菜单、提示以及中文 EPUB 书籍。
+本固件基于[ crosspoint-reader/crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)上游源码，适配了**简体中文界面**与**CJK 点阵字体**，使设备能够完整显示中文菜单、提示以及中文 EPUB 书籍。
 
 以后更新以同步上游为主，不会增加太多功能，保持纯粹。
 
@@ -30,7 +30,7 @@
 
 ## 致谢
 
-中文适配的实现参考了 0x1abin/crossmux的开源成果，包括：
+中文适配的实现参考了 [0x1abin/crossmux](https://github.com/0x1abin/crossmux)的开源成果，包括：
 
 - CJK 点阵字体文件（Noto Sans CJK 8～18pt）
 - 简体中文翻译文件 (`chinese.yaml`)
@@ -61,5 +61,3 @@ pio run -e slim -t upload
 ## 许可证
 
 本项目基于 MIT License开源。上游 CrossPoint Reader 亦采用 MIT 许可。
-
----
