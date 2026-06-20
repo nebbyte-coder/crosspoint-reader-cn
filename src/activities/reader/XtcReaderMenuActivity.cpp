@@ -9,9 +9,7 @@
 
 XtcReaderMenuActivity::XtcReaderMenuActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                              const std::string& title)
-    : Activity("XtcReaderMenu", renderer, mappedInput),
-      menuItems(buildMenuItems()),  
-      title(title) {}
+    : Activity("XtcReaderMenu", renderer, mappedInput), menuItems(buildMenuItems()), title(title) {}
 
 std::vector<XtcReaderMenuActivity::MenuItem> XtcReaderMenuActivity::buildMenuItems() {
   std::vector<MenuItem> items;
@@ -26,12 +24,10 @@ void XtcReaderMenuActivity::onEnter() {
   requestUpdate();
 }
 
-void XtcReaderMenuActivity::onExit() {
-  Activity::onExit();
-}
+void XtcReaderMenuActivity::onExit() { Activity::onExit(); }
 
 void XtcReaderMenuActivity::loop() {
-   buttonNavigator.onNext([this] {
+  buttonNavigator.onNext([this] {
     selectedIndex = ButtonNavigator::nextIndex(selectedIndex, static_cast<int>(menuItems.size()));
     requestUpdate();
   });
@@ -68,12 +64,9 @@ void XtcReaderMenuActivity::render(RenderLock&&) {
   const int contentHeight = screen.height - contentTop - metrics.verticalSpacing;
 
   GUI.drawList(
-      renderer, Rect{screen.x, contentTop, screen.width, contentHeight},
-      menuItems.size(), selectedIndex,
+      renderer, Rect{screen.x, contentTop, screen.width, contentHeight}, menuItems.size(), selectedIndex,
       [this](int index) { return I18N.get(menuItems[index].labelId); },  // ★ 已捕获 this
-      nullptr, nullptr,
-      [](int) { return ""; },
-      true);
+      nullptr, nullptr, [](int) { return ""; }, true);
 
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

@@ -16,15 +16,15 @@
 
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "EpubReaderPercentSelectionActivity.h"
 #include "MappedInputManager.h"
 #include "ProgressFile.h"
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
 #include "XtcReaderChapterSelectionActivity.h"
+#include "XtcReaderMenuActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
-#include "EpubReaderPercentSelectionActivity.h"
-#include "XtcReaderMenuActivity.h"
 
 void XtcReaderActivity::onEnter() {
   Activity::onEnter();
@@ -58,14 +58,13 @@ void XtcReaderActivity::onExit() {
 void XtcReaderActivity::loop() {
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     if (xtc) {
-      startActivityForResult(
-          std::make_unique<XtcReaderMenuActivity>(renderer, mappedInput, xtc->getTitle()),
-          [this](const ActivityResult& result) {
-            if (!result.isCancelled) {
-              const auto& menu = std::get<MenuResult>(result.data);  
-              onXtcReaderMenuConfirm(menu.action);
-            }
-          });
+      startActivityForResult(std::make_unique<XtcReaderMenuActivity>(renderer, mappedInput, xtc->getTitle()),
+                             [this](const ActivityResult& result) {
+                               if (!result.isCancelled) {
+                                 const auto& menu = std::get<MenuResult>(result.data);
+                                 onXtcReaderMenuConfirm(menu.action);
+                               }
+                             });
     }
     return;
   }
