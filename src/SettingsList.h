@@ -123,9 +123,8 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
             {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
             "refreshFrequency", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
-                          {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED
-                          },
-                          "uiTheme", StrId::STR_CAT_DISPLAY),
+                          {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED}, "uiTheme",
+                          StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
                             StrId::STR_CAT_DISPLAY),
 
@@ -159,8 +158,8 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
         SettingInfo::Toggle(StrId::STR_TEXT_AA, &CrossPointSettings::textAntiAliasing, "textAntiAliasing",
                             StrId::STR_CAT_READER),
         SettingInfo::Enum(StrId::STR_FAKE_BOLD, &CrossPointSettings::fakeBold,
-                          {StrId::STR_FAKE_BOLD_OFF, StrId::STR_FAKE_BOLD_ON, StrId::STR_FAKE_BOLD_EXTRA},
-                          "fakeBold", StrId::STR_CAT_READER),
+                          {StrId::STR_FAKE_BOLD_OFF, StrId::STR_FAKE_BOLD_ON, StrId::STR_FAKE_BOLD_EXTRA}, "fakeBold",
+                          StrId::STR_CAT_READER),
         SettingInfo::Enum(StrId::STR_IMAGES, &CrossPointSettings::imageRendering,
                           {StrId::STR_IMAGES_DISPLAY, StrId::STR_IMAGES_PLACEHOLDER, StrId::STR_IMAGES_SUPPRESS},
                           "imageRendering", StrId::STR_CAT_READER),
