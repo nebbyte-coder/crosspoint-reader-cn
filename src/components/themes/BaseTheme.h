@@ -31,6 +31,8 @@ struct ThemeMetrics {
   int batteryBarHeight;
   int headerHeight;
   int verticalSpacing;
+  int previewPadding;
+  int previewHeightPercent;
 
   int contentSidePadding;
   int listRowHeight;
