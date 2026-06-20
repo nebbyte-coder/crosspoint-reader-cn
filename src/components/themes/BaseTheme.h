@@ -34,6 +34,9 @@ struct ThemeMetrics {
   int previewPadding;
   int previewHeightPercent;
 
+  int previewPadding;
+  int previewHeightPercent;
+
   int contentSidePadding;
   int listRowHeight;
   int listWithSubtitleRowHeight;
