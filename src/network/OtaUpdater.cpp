@@ -17,7 +17,7 @@
 #include <string>
 
 namespace {
-constexpr char latestReleaseUrl[] = "https://gitee.com/nebbyte-coder/crosspoint-reader-cn/raw/chinese-support/ota-manifest.json";
+constexpr char latestReleaseUrl[] = "https://gitee.com/nebbyte-coder/ota/raw/master/ota-manifest.json";
 
 esp_err_t http_client_set_header_cb(esp_http_client_handle_t http_client) {
   return esp_http_client_set_header(http_client, "User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
