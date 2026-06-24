@@ -42,5 +42,5 @@
 #include "notosans_cjk_10.h"
 #include "notosans_cjk_12.h"
 #include "notosans_cjk_14.h"
-#include "notosans_cjk_16.h"
-#include "notosans_cjk_18.h"
+//#include "notosans_cjk_16.h"
+//#include "notosans_cjk_18.h"

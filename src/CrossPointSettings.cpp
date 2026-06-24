@@ -362,9 +362,8 @@ int CrossPointSettings::getReaderFontId() const {
         default:
           return NOTOSERIF_14_FONT_ID;
         case LARGE:
-          return NOTOSERIF_16_FONT_ID;
         case EXTRA_LARGE:
-          return NOTOSERIF_18_FONT_ID;
+          return NOTOSERIF_14_FONT_ID;  // fallback to 14pt
       }
     case NOTOSANS:
       switch (fontSize) {
@@ -374,9 +373,8 @@ int CrossPointSettings::getReaderFontId() const {
         default:
           return NOTOSANS_14_FONT_ID;
         case LARGE:
-          return NOTOSANS_16_FONT_ID;
         case EXTRA_LARGE:
-          return NOTOSANS_18_FONT_ID;
+          return NOTOSERIF_14_FONT_ID;  // fallback to 14pt
       }
   }
 }

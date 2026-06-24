@@ -178,6 +178,12 @@ void SettingsActivity::loop() {
         currentSettings = &systemSettings;
         break;
     }
+
+    // Ensure font size is valid for built-in fonts
+    if (SETTINGS.sdFontFamilyName[0] == '\0' && SETTINGS.fontSize >= 2) {
+      SETTINGS.fontSize = 1;  // MEDIUM
+    }
+
     settingsCount = static_cast<int>(currentSettings->size());
   }
 }
@@ -202,8 +208,19 @@ void SettingsActivity::toggleCurrentSetting() {
     const bool currentValue = SETTINGS.*(setting.valuePtr);
     SETTINGS.*(setting.valuePtr) = !currentValue;
   } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
-    const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
-    SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(setting.enumValues.size());
+    uint8_t currentValue = SETTINGS.*(setting.valuePtr);
+    const uint8_t totalValues = static_cast<uint8_t>(setting.enumValues.size());
+    // For font size, if using built-in fonts, skip LARGE and EXTRA_LARGE
+    if (setting.nameId == StrId::STR_FONT_SIZE && SETTINGS.sdFontFamilyName[0] == '\0') {
+      // Only allow SMALL(0) and MEDIUM(1)
+      uint8_t nextValue = (currentValue + 1) % totalValues;
+      while (nextValue >= 2) {
+        nextValue = (nextValue + 1) % totalValues;
+      }
+      SETTINGS.*(setting.valuePtr) = nextValue;
+    } else {
+      SETTINGS.*(setting.valuePtr) = (currentValue + 1) % totalValues;
+    }
   } else if (setting.type == SettingType::ENUM && setting.valueGetter && setting.valueSetter) {
     if (setting.nameId == StrId::STR_FONT_FAMILY) {
       // Launch font selection submenu instead of cycling
