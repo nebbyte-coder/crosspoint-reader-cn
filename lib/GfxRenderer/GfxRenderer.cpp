@@ -1401,6 +1401,20 @@ int GfxRenderer::getSpaceAdvance(const int fontId, const uint32_t leftCp, const 
                                  const EpdFontFamily::Style style) const {
   // Advance table fast-path for SD card fonts during layout.
   // Kern data is not loaded during layout (consistent with previous metadataOnly behavior),
+#ifdef ENABLE_CHINESE_VERSION
+  // CJK aware inter-word gap
+  {
+    const bool L = leftCp != 0 && utf8IsCjkBreakable(leftCp);
+    const bool R = rightCp != 0 && utf8IsCjkBreakable(rightCp);
+    if (L && R) {
+      return 0;  // CJK↔CJK: no gap
+    }
+    if (L != R) {
+      const int fullSpacePx = getSpaceWidth(fontId, style);
+      return fullSpacePx / 3;  // CJK↔Latin: ~1/3 space
+    }
+  }
+#endif
   // so we return just the space advance without kerning.
   auto sdIt = sdCardFonts_.find(fontId);
   if (sdIt != sdCardFonts_.end() && sdIt->second->hasAdvanceTable()) {
