@@ -1078,7 +1078,28 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         continue;  // Move to the next iteration
       }
     }
-
+#ifdef ENABLE_CHINESE_VERSION
+    // CJK per-character tokenization: flush each CJK ideograph / kana / hangul /
+    // fullwidth punctuation as its own word.
+    {
+      const auto* peekStart = reinterpret_cast<const unsigned char*>(&s[i]);
+      const unsigned char* peek = peekStart;
+      const uint32_t cp = utf8NextCodepoint(&peek);
+      const int byteLen = static_cast<int>(peek - peekStart);
+      if (byteLen > 0 && cp != REPLACEMENT_GLYPH && i + byteLen <= len && utf8IsCjkBreakable(cp)) {
+        if (self->partWordBufferIndex > 0) {
+          self->flushPartWordBuffer();
+        }
+        for (int b = 0; b < byteLen && self->partWordBufferIndex < MAX_WORD_SIZE; ++b) {
+          self->partWordBuffer[self->partWordBufferIndex++] = s[i + b];
+        }
+        self->flushPartWordBuffer();
+        self->nextWordContinues = false;  // next char is independent — keep gap adjustable for justify
+        i += byteLen - 1;                 // for-loop's ++i consumes the final byte
+        continue;
+      }
+    }
+#endif
     // If we're about to run out of space, then cut the word off and start a new one.
     // For CJK text (no spaces), this is the primary word-breaking mechanism.
     // We must avoid splitting multi-byte UTF-8 sequences across word boundaries,
