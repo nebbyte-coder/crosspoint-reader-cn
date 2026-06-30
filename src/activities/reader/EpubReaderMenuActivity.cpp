@@ -25,10 +25,6 @@ std::vector<EpubReaderMenuActivity::MenuItem> EpubReaderMenuActivity::buildMenuI
                                                                                      bool hasBookmarks) {
   std::vector<MenuItem> items;
   items.reserve(15);
-  items.push_back({MenuAction::FONT_SELECTION, StrId::STR_FONT_FAMILY});
-  items.push_back({MenuAction::FAKE_BOLD, StrId::STR_FAKE_BOLD});
-  items.push_back({MenuAction::TEXT_AA, StrId::STR_TEXT_AA});
-  items.push_back({MenuAction::DELETE_CACHE, StrId::STR_DELETE_CACHE});
   items.push_back({MenuAction::SELECT_CHAPTER, StrId::STR_SELECT_CHAPTER});
   if (hasFootnotes) {
     items.push_back({MenuAction::FOOTNOTES, StrId::STR_FOOTNOTES});
@@ -44,6 +40,10 @@ std::vector<EpubReaderMenuActivity::MenuItem> EpubReaderMenuActivity::buildMenuI
   items.push_back({MenuAction::DISPLAY_QR, StrId::STR_DISPLAY_QR});
   items.push_back({MenuAction::GO_HOME, StrId::STR_GO_HOME_BUTTON});
   items.push_back({MenuAction::SYNC, StrId::STR_SYNC_PROGRESS});
+  items.push_back({MenuAction::DELETE_CACHE, StrId::STR_DELETE_CACHE});
+  items.push_back({MenuAction::FONT_SELECTION, StrId::STR_FONT_FAMILY});
+  items.push_back({MenuAction::TEXT_AA, StrId::STR_TEXT_AA});
+  items.push_back({MenuAction::FAKE_BOLD, StrId::STR_FAKE_BOLD});
   return items;
 }
 

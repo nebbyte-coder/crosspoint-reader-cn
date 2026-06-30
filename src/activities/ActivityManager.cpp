@@ -6,6 +6,8 @@
 #include <algorithm>
 
 #include "OpdsServerStore.h"
+#include "apps/AppsMenuActivity.h"
+#include "apps/sudoku/SudokuMenuActivity.h"
 #include "boot_sleep/BootActivity.h"
 #include "boot_sleep/SleepActivity.h"
 #include "browser/OpdsBookBrowserActivity.h"
@@ -175,6 +177,8 @@ void ActivityManager::goToFileTransfer() {
 
 void ActivityManager::goToSettings() { replaceActivity(std::make_unique<SettingsActivity>(renderer, mappedInput)); }
 
+void ActivityManager::goToApps() { replaceActivity(std::make_unique<AppsMenuActivity>(renderer, mappedInput)); }
+
 void ActivityManager::goToFileBrowser(std::string path) {
   replaceActivity(std::make_unique<FileBrowserActivity>(renderer, mappedInput, std::move(path)));
 }
@@ -207,6 +211,8 @@ void ActivityManager::goToBoot() { replaceActivity(std::make_unique<BootActivity
 void ActivityManager::goToFullScreenMessage(std::string message, EpdFontFamily::Style style) {
   replaceActivity(std::make_unique<FullScreenMessageActivity>(renderer, mappedInput, std::move(message), style));
 }
+
+void ActivityManager::goToSudoku() { replaceActivity(std::make_unique<SudokuMenuActivity>(renderer, mappedInput)); }
 
 void ActivityManager::goHome(HomeMenuItem initialMenuItem) {
   if (initialMenuItem == HomeMenuItem::NONE && currentActivity) {

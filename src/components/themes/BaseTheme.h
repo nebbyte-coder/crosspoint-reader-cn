@@ -99,7 +99,23 @@ struct ThemeMetrics {
   int textFieldLineEndOffset;
 };
 
-enum UIIcon { None = 0, Folder, Text, Image, Book, File, Recent, Settings, Transfer, Library, Wifi, Hotspot, Bookmark };
+enum UIIcon {
+  None = 0,
+  Folder,
+  Text,
+  Image,
+  Book,
+  File,
+  Recent,
+  Settings,
+  Transfer,
+  Library,
+  Wifi,
+  Hotspot,
+  Bookmark,
+  Sudoku,
+  Apps,
+};
 
 enum class KeyboardKeyType { Normal, Shift, Mode, Space, Del, Ok, Disabled };
 
@@ -123,8 +139,8 @@ constexpr ThemeMetrics values = {.batteryWidth = 15,
                                  .scrollBarWidth = 4,
                                  .scrollBarRightOffset = 5,
                                  .homeTopPadding = 40,
-                                 .homeCoverHeight = 400,
-                                 .homeCoverTileHeight = 400,
+                                 .homeCoverHeight = 340,
+                                 .homeCoverTileHeight = 340,
                                  .homeRecentBooksCount = 1,
                                  .homeContinueReadingInMenu = false,
                                  .homeMenuTopOffset = 10,
