@@ -100,7 +100,16 @@ void XtcReaderActivity::loop() {
 
   // Enter chapter selection activity
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    openChapterSelection();
+    if (xtc) {
+      startActivityForResult(std::make_unique<XtcReaderMenuActivity>(renderer, mappedInput, xtc->getTitle()),
+                             [this](const ActivityResult& result) {
+                               if (!result.isCancelled) {
+                                 const auto& menu = std::get<MenuResult>(result.data);
+                                 onXtcReaderMenuConfirm(menu.action);
+                               }
+                             });
+    }
+    return;
   }
 
   // Long press BACK (1s+) goes to file selection

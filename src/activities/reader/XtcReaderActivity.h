@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "EndOfBookOptions.h"
+#include "XtcReaderMenuActivity.h"
 #include "activities/Activity.h"
 
 class XtcReaderActivity final : public Activity {

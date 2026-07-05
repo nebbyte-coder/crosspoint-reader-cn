@@ -213,13 +213,21 @@ void SettingsActivity::toggleCurrentSetting() {
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
     if (setting.enumValues.size() > 2) {
       const auto valuePtr = setting.valuePtr;
-      optionPopup.show(setting.nameId, setting.enumValues.data(), static_cast<int>(setting.enumValues.size()),
-                       currentValue, [this, valuePtr, sleepScreenChanged, quickResumeTimeoutChanged](int idx) {
-                         SETTINGS.*valuePtr = idx;
-                         syncQuickResumeTimeoutForSleepScreen(sleepScreenChanged, quickResumeTimeoutChanged);
-                         SETTINGS.saveToFile();
-                         rebuildSettingsLists();
-                       });
+      // 判断是否为字体大小设置且当前使用内置字体（非 SD 卡字体）
+      bool isFontSizeWithBuiltinFonts =
+          (setting.nameId == StrId::STR_FONT_SIZE && SETTINGS.sdFontFamilyName[0] == '\0');
+      optionPopup.show(
+          setting.nameId, setting.enumValues.data(), static_cast<int>(setting.enumValues.size()), currentValue,
+          [this, valuePtr, sleepScreenChanged, quickResumeTimeoutChanged, isFontSizeWithBuiltinFonts](int idx) {
+            // 如果是字体大小且使用内置字体，限制最大为 MEDIUM (1)
+            if (isFontSizeWithBuiltinFonts) {
+              idx = std::min(idx, 1);
+            }
+            SETTINGS.*valuePtr = idx;
+            syncQuickResumeTimeoutForSleepScreen(sleepScreenChanged, quickResumeTimeoutChanged);
+            SETTINGS.saveToFile();
+            rebuildSettingsLists();
+          });
       requestUpdate();
       return;
     }
