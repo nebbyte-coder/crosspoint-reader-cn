@@ -9,6 +9,7 @@
 #include <ReleaseJsonParser.h>
 #include <esp_ota_ops.h>
 #include <esp_wifi.h>
+#include <esp_http_client.h>
 // clang-format on
 
 #include <string>
