@@ -84,6 +84,8 @@ bool MappedInputManager::wasAnyPressed() const { return gpio.wasAnyPressed(); }
 
 bool MappedInputManager::wasAnyReleased() const { return gpio.wasAnyReleased(); }
 
+bool MappedInputManager::isHeld(Button button) const { return isPressed(button); }
+
 unsigned long MappedInputManager::getHeldTime() const { return gpio.getHeldTime(); }
 
 MappedInputManager::Labels MappedInputManager::mapLabels(const char* back, const char* confirm, const char* previous,

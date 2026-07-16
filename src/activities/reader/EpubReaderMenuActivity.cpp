@@ -44,7 +44,6 @@ std::vector<EpubReaderMenuActivity::MenuItem> EpubReaderMenuActivity::buildMenuI
   items.push_back({MenuAction::FONT_SELECTION, StrId::STR_FONT_FAMILY});
   items.push_back({MenuAction::TEXT_AA, StrId::STR_TEXT_AA});
   items.push_back({MenuAction::FAKE_BOLD, StrId::STR_FAKE_BOLD});
-
   return items;
 }
 

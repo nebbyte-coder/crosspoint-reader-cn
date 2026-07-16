@@ -12,6 +12,7 @@
 
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
+#include "components/icons/apps.h"
 #include "components/icons/book.h"
 #include "components/icons/book24.h"
 #include "components/icons/bookmark.h"
@@ -24,6 +25,7 @@
 #include "components/icons/library.h"
 #include "components/icons/recent.h"
 #include "components/icons/settings2.h"
+#include "components/icons/sudoku.h"
 #include "components/icons/text24.h"
 #include "components/icons/transfer.h"
 #include "components/icons/wifi.h"
@@ -76,6 +78,10 @@ const uint8_t* iconForName(UIIcon icon, int size) {
         return HotspotIcon;
       case UIIcon::Bookmark:
         return BookmarkIcon;
+      case UIIcon::Apps:
+        return AppsIcon;
+      case UIIcon::Sudoku:
+        return SudokuIcon;
       default:
         return nullptr;
     }
