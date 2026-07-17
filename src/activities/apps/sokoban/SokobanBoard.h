@@ -27,7 +27,7 @@ class SokobanBoard {
   bool canUndo() const;
 
  private:
-  static constexpr int HISTORY_MAX = 8;  // 最多撤销 8 步
+  static constexpr int HISTORY_MAX = 8;  // 最多撤销 8步
   struct HistoryEntry {
     Cell cells[MAX_ROWS][MAX_COLS];
     int playerR;

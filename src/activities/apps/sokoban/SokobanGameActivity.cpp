@@ -271,8 +271,6 @@ void SokobanGameActivity::render(RenderLock&&) {
   } else {
     drawHUD();
     drawBoard();
-    // 不再绘制底部提示
-    // drawFooter();
   }
 
   renderer.displayBuffer(HalDisplay::FAST_REFRESH);
@@ -343,24 +341,56 @@ void SokobanGameActivity::drawBoard() {
           renderer.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4, true);
           renderer.drawRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2, 2, false);
           break;
-        case SokobanBoard::PLAYER:
-          renderer.fillRect(x + 4, y + 4, cellSize - 8, cellSize - 8, true);
-          renderer.drawRect(x + cellSize / 3 - 2, y + cellSize / 4, 3, 3, false);
-          renderer.drawRect(x + 2 * cellSize / 3 - 1, y + cellSize / 4, 3, 3, false);
-          break;
-        case SokobanBoard::PLAYER_ON_TARGET:
-          renderer.fillRect(x + 4, y + 4, cellSize - 8, cellSize - 8, true);
-          renderer.drawRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2, 2, false);
-          break;
-        default:
-          break;
+        case SokobanBoard::PLAYER: {
+            // 白色笑脸：空心方框脸 + 黑色眼睛 + 得意歪嘴笑（左边短右边长）
+            int faceSize = cellSize - 6;
+            int faceX = x + 3;
+            int faceY = y + 3;
+            // 脸轮廓（黑色空心方框）
+            renderer.drawRect(faceX, faceY, faceSize, faceSize, 2, true);
+            // 眼睛（两个黑色小矩形）
+            int eyeSize = 2;
+            int eyeY = faceY + faceSize / 4;
+            renderer.fillRect(faceX + faceSize / 4, eyeY, eyeSize, eyeSize, true);
+            renderer.fillRect(faceX + 3 * faceSize / 4, eyeY, eyeSize, eyeSize, true);
+            // 嘴巴：左边短、右边长的得意歪嘴笑
+            int mouthY_left = faceY + faceSize / 2;          // 左嘴角较高
+            int mouthY_mid = faceY + 3 * faceSize / 5;       // 弧底稍低
+            int mouthY_right = faceY + 2 * faceSize / 3;     // 右嘴角更低
+            int mouthX_left = faceX + faceSize / 3;           // 左嘴角（靠近中心，使左段短）
+            int mouthX_mid = faceX + faceSize / 2;            // 中点
+            int mouthX_right = faceX + 3 * faceSize / 4;      // 右嘴角（远离中心，使右段长）
+            renderer.drawLine(mouthX_left, mouthY_left, mouthX_mid, mouthY_mid, true);
+            renderer.drawLine(mouthX_mid, mouthY_mid, mouthX_right, mouthY_right, true);
+            break;
+        }
+        case SokobanBoard::PLAYER_ON_TARGET: {
+            // 白色笑脸 + 目标框
+            int faceSize = cellSize - 6;
+            int faceX = x + 3;
+            int faceY = y + 3;
+            renderer.drawRect(faceX, faceY, faceSize, faceSize, 2, true);
+            // 眼睛
+            int eyeSize = 2;
+            int eyeY = faceY + faceSize / 4;
+            renderer.fillRect(faceX + faceSize / 4, eyeY, eyeSize, eyeSize, true);
+            renderer.fillRect(faceX + 3 * faceSize / 4, eyeY, eyeSize, eyeSize, true);
+            // 嘴巴：左边短、右边长的得意歪嘴笑
+            int mouthY_left = faceY + faceSize / 2;
+            int mouthY_mid = faceY + 3 * faceSize / 5;
+            int mouthY_right = faceY + 2 * faceSize / 3;
+            int mouthX_left = faceX + faceSize / 3;
+            int mouthX_mid = faceX + faceSize / 2;
+            int mouthX_right = faceX + 3 * faceSize / 4;
+            renderer.drawLine(mouthX_left, mouthY_left, mouthX_mid, mouthY_mid, true);
+            renderer.drawLine(mouthX_mid, mouthY_mid, mouthX_right, mouthY_right, true);
+            // 目标框（空心矩形）
+            renderer.drawRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2, 2, true);
+            break;
+        }
       }
     }
   }
-}
-
-void SokobanGameActivity::drawFooter() {
-  // 底部提示已移除，保留空函数避免编译错误
 }
 
 void SokobanGameActivity::drawWinScreen() {

@@ -54,7 +54,6 @@ class SokobanGameActivity final : public Activity {
 
   void drawBoard();
   void drawHUD();
-  void drawFooter();
   void drawWinScreen();
   void drawLevelSelect();
 
