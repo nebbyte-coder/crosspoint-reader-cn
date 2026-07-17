@@ -11,19 +11,21 @@
 #include "levels.h"
 
 SokobanGameActivity::SokobanGameActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
-    : Activity("Sokoban", renderer, mappedInput) {}
+    : Activity("Sokoban", renderer, mappedInput) {
+  heldLevelSelectDir = 0;
+  lastLevelSelectScrollTime = 0;
+  isFirstLevelSelectHold = false;
+}
 
 void SokobanGameActivity::onEnter() {
   Activity::onEnter();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
-  // 只读取关卡索引
   SokobanSaveSlot slot;
   if (SokobanStore::load(slot)) {
     currentLevel = slot.currentLevel;
     if (currentLevel < 0 || currentLevel >= TOTAL_LEVELS) currentLevel = 0;
     moves = slot.moves;
-    // 注意：pushes 不再保存，从 board.pushes 获取
   } else {
     currentLevel = 0;
     moves = 0;
@@ -48,9 +50,12 @@ void SokobanGameActivity::loadLevel(int idx) {
   moves = 0;
   state = State::Playing;
   heldDr = heldDc = 0;
+  heldLevelSelectDir = 0;
 }
 
 void SokobanGameActivity::loop() {
+  const uint32_t now = millis();
+
   if (state == State::Won) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) ||
         mappedInput.wasReleased(MappedInputManager::Button::Back)) {
@@ -66,6 +71,69 @@ void SokobanGameActivity::loop() {
     return;
   }
 
+  if (state == State::LevelSelect) {
+    // 单次按键
+    if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
+      if (selectedLevel > 0) {
+        selectedLevel--;
+        if (selectedLevel < scrollOffset) scrollOffset--;
+        requestUpdate();
+      }
+      heldLevelSelectDir = -1;
+      lastLevelSelectScrollTime = now;
+      isFirstLevelSelectHold = true;
+    } else if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
+      if (selectedLevel < TOTAL_LEVELS - 1) {
+        selectedLevel++;
+        if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS) scrollOffset++;
+        requestUpdate();
+      }
+      heldLevelSelectDir = 1;
+      lastLevelSelectScrollTime = now;
+      isFirstLevelSelectHold = true;
+    }
+
+    // 长按连续滚动
+    if (heldLevelSelectDir != 0) {
+      bool held = false;
+      if (heldLevelSelectDir == -1 && mappedInput.isHeld(MappedInputManager::Button::Up))
+        held = true;
+      else if (heldLevelSelectDir == 1 && mappedInput.isHeld(MappedInputManager::Button::Down))
+        held = true;
+
+      if (held) {
+        uint32_t delay = isFirstLevelSelectHold ? 350 : 180;
+        if (now - lastLevelSelectScrollTime >= delay) {
+          if (heldLevelSelectDir == -1 && selectedLevel > 0) {
+            selectedLevel--;
+            if (selectedLevel < scrollOffset) scrollOffset--;
+            requestUpdate();
+          } else if (heldLevelSelectDir == 1 && selectedLevel < TOTAL_LEVELS - 1) {
+            selectedLevel++;
+            if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS) scrollOffset++;
+            requestUpdate();
+          }
+          lastLevelSelectScrollTime = now;
+          isFirstLevelSelectHold = false;
+        }
+      } else {
+        heldLevelSelectDir = 0;  // 松开
+      }
+    }
+
+    // 确认/返回
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      loadLevel(selectedLevel);
+      scheduleSave();
+      requestUpdate();
+    } else if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+      state = State::Playing;
+      requestUpdate();
+    }
+    return;
+  }
+
+  // Playing 状态
   handleInput();
   if (saveDebouncer.consumeIfDue(millis())) {
     flushSave();
@@ -75,6 +143,7 @@ void SokobanGameActivity::loop() {
 void SokobanGameActivity::handleInput() {
   const uint32_t now = millis();
 
+  // 方向键移动
   if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
     move(-1, 0);
     heldDr = -1;
@@ -101,6 +170,7 @@ void SokobanGameActivity::handleInput() {
     isFirstMoveAfterHold = true;
   }
 
+  // 长按连续移动
   if (heldDr != 0 || heldDc != 0) {
     bool held = false;
     if (heldDr == -1 && mappedInput.isHeld(MappedInputManager::Button::Up))
@@ -124,10 +194,24 @@ void SokobanGameActivity::handleInput() {
     }
   }
 
-  // 返回键：无操作（或可设为重置）
+  // 电源键撤销
+  if (mappedInput.wasReleased(MappedInputManager::Button::Power)) {
+    undo();
+  }
+
+  // 确认键打开关卡选择
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    selectedLevel = currentLevel;
+    scrollOffset = (selectedLevel / MENU_VISIBLE_ITEMS) * MENU_VISIBLE_ITEMS;
+    state = State::LevelSelect;
+    requestUpdate();
+  }
+
+  // 返回键退出游戏（回到应用列表），并保存进度
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-    // 简单起见：重置当前关卡
-    resetLevel();
+    flushSave();
+    activityManager.goToApps();
+    return;
   }
 }
 
@@ -143,25 +227,18 @@ void SokobanGameActivity::move(int dr, int dc) {
   }
 }
 
+void SokobanGameActivity::undo() {
+  if (state != State::Playing) return;
+  if (board.canUndo()) {
+    board.undo();
+    if (moves > 0) moves--;
+    requestUpdate();
+  }
+}
+
 void SokobanGameActivity::resetLevel() {
   loadLevel(currentLevel);
   requestUpdate();
-}
-
-void SokobanGameActivity::nextLevel() {
-  if (currentLevel + 1 < TOTAL_LEVELS) {
-    loadLevel(currentLevel + 1);
-    scheduleSave();
-    requestUpdate();
-  }
-}
-
-void SokobanGameActivity::prevLevel() {
-  if (currentLevel > 0) {
-    loadLevel(currentLevel - 1);
-    scheduleSave();
-    requestUpdate();
-  }
 }
 
 void SokobanGameActivity::onWin() {
@@ -179,7 +256,6 @@ void SokobanGameActivity::flushSave() {
   SokobanSaveSlot slot;
   slot.currentLevel = currentLevel;
   slot.moves = moves;
-  // 不保存棋盘
   slot.hasBoard = false;
   SokobanStore::save(slot);
 }
@@ -190,10 +266,13 @@ void SokobanGameActivity::render(RenderLock&&) {
 
   if (state == State::Won) {
     drawWinScreen();
+  } else if (state == State::LevelSelect) {
+    drawLevelSelect();
   } else {
     drawHUD();
     drawBoard();
-    drawFooter();
+    // 不再绘制底部提示
+    // drawFooter();
   }
 
   renderer.displayBuffer(HalDisplay::FAST_REFRESH);
@@ -205,11 +284,11 @@ void SokobanGameActivity::drawHUD() {
 
   char buf[64];
   snprintf(buf, sizeof(buf), "%s %d/%d", tr(STR_SOKOBAN_TITLE), currentLevel + 1, TOTAL_LEVELS);
-  renderer.drawText(UI_12_FONT_ID, 12, 10, buf);
+  renderer.drawText(UI_12_FONT_ID, 12, 8, buf);
 
   snprintf(buf, sizeof(buf), "%s:%d %s:%d", tr(STR_SOKOBAN_MOVES), moves, tr(STR_SOKOBAN_PUSHES), board.pushes);
   int tw = renderer.getTextWidth(UI_12_FONT_ID, buf);
-  renderer.drawText(UI_12_FONT_ID, sw - 12 - tw, 10, buf);
+  renderer.drawText(UI_12_FONT_ID, sw - 12 - tw, 8, buf);
 }
 
 void SokobanGameActivity::drawBoard() {
@@ -240,7 +319,15 @@ void SokobanGameActivity::drawBoard() {
 
       switch (cell) {
         case SokobanBoard::WALL:
-          renderer.fillRect(x, y, cellSize, cellSize, true);
+          renderer.drawRect(x, y, cellSize, cellSize, 2, true);
+          {
+            int dotSize = (cellSize >= 16) ? 2 : 1;  // 格子大时用2px，小时用1px
+            int margin = cellSize / 4;
+            renderer.fillRect(x + margin, y + margin, dotSize, dotSize, true);
+            renderer.fillRect(x + cellSize - margin - dotSize, y + margin, dotSize, dotSize, true);
+            renderer.fillRect(x + margin, y + cellSize - margin - dotSize, dotSize, dotSize, true);
+            renderer.fillRect(x + cellSize - margin - dotSize, y + cellSize - margin - dotSize, dotSize, dotSize, true);
+          }
           break;
         case SokobanBoard::FLOOR:
           break;
@@ -273,11 +360,7 @@ void SokobanGameActivity::drawBoard() {
 }
 
 void SokobanGameActivity::drawFooter() {
-  const int sw = renderer.getScreenWidth();
-  const int sh = renderer.getScreenHeight();
-  renderer.drawLine(0, sh - FOOTER_H, sw, sh - FOOTER_H, true);
-  renderer.drawText(UI_10_FONT_ID, 12, sh - FOOTER_H + 6, tr(STR_SOKOBAN_HINT_MOVE));
-  renderer.drawText(UI_10_FONT_ID, 150, sh - FOOTER_H + 6, tr(STR_SOKOBAN_HINT_UNDO));  // 提示改为重置
+  // 底部提示已移除，保留空函数避免编译错误
 }
 
 void SokobanGameActivity::drawWinScreen() {
@@ -288,4 +371,39 @@ void SokobanGameActivity::drawWinScreen() {
   snprintf(buf, sizeof(buf), "%s %d %s %d", tr(STR_SOKOBAN_MOVES), moves, tr(STR_SOKOBAN_PUSHES), board.pushes);
   renderer.drawCenteredText(UI_12_FONT_ID, sh / 2 + 10, buf);
   renderer.drawCenteredText(UI_12_FONT_ID, sh / 2 + 35, tr(STR_SOKOBAN_WIN_HINT));
+}
+
+void SokobanGameActivity::drawLevelSelect() {
+  const int sw = renderer.getScreenWidth();
+  const int sh = renderer.getScreenHeight();
+  const int itemH = 30;
+  const int listTop = 36;
+  const int listBottom = sh - 62;  // 留出底部提示空间
+  const int visibleCount = (listBottom - listTop) / itemH;
+  if (visibleCount <= 0) return;
+
+  // 标题
+  char buf[64];
+  snprintf(buf, sizeof(buf), "%s (%d)", tr(STR_SOKOBAN_TITLE), TOTAL_LEVELS);
+  renderer.drawCenteredText(UI_12_FONT_ID, 8, buf);
+
+  // 下划线
+  renderer.drawLine(0, 35, sw, 35, true);
+
+  // 绘制可见关卡
+  for (int i = 0; i < visibleCount && (scrollOffset + i) < TOTAL_LEVELS; ++i) {
+    int levelIdx = scrollOffset + i;
+    int y = listTop + i * itemH;
+
+    if (levelIdx == selectedLevel) {
+      renderer.fillRect(10, y, 4, itemH - 2, true);
+    }
+
+    snprintf(buf, sizeof(buf), "%s %d", tr(STR_SOKOBAN_LEVEL), levelIdx + 1);
+    renderer.drawText(UI_12_FONT_ID, 22, y + 4, buf);
+  }
+
+  // 底部提示
+  renderer.drawLine(0, sh - 49, sw, sh - 49, true);
+  renderer.drawCenteredText(UI_10_FONT_ID, sh - 35, tr(STR_SOKOBAN_SELECT_HINT));
 }

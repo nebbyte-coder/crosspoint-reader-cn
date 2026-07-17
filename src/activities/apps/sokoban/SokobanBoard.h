@@ -21,4 +21,23 @@ class SokobanBoard {
   bool loadFromStrings(const char* const* levelData, int numRows);
   bool movePlayer(int dr, int dc);
   bool isWin() const;
+
+  // 撤销
+  void undo();
+  bool canUndo() const;
+
+ private:
+  static constexpr int HISTORY_MAX = 8;  // 最多撤销 8 步
+  struct HistoryEntry {
+    Cell cells[MAX_ROWS][MAX_COLS];
+    int playerR;
+    int playerC;
+    int pushes;
+  };
+  HistoryEntry history[HISTORY_MAX];
+  int historyHead = 0;
+  int historyCount = 0;
+
+  void pushHistory();
+  bool popHistory();
 };

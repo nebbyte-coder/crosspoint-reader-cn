@@ -76,6 +76,9 @@ bool SokobanBoard::movePlayer(int dr, int dc) {
   Cell target = cells[nr][nc];
   if (target == WALL) return false;
 
+  // 先保存历史
+  pushHistory();
+
   if (target == BOX || target == BOX_ON_TARGET) {
     int nnr = nr + dr;
     int nnc = nc + dc;
@@ -89,7 +92,6 @@ bool SokobanBoard::movePlayer(int dr, int dc) {
     } else {
       cells[nnr][nnc] = BOX;
     }
-    // 箱子原来位置
     if (target == BOX_ON_TARGET) {
       cells[nr][nc] = TARGET;
     } else {
@@ -126,3 +128,37 @@ bool SokobanBoard::isWin() const {
   }
   return true;
 }
+void SokobanBoard::pushHistory() {
+  if (historyCount >= HISTORY_MAX) {
+    // 覆盖最旧的（循环覆盖）
+    // 简单做法：当满时，将整个数组向前移动一位
+    for (int i = 0; i < HISTORY_MAX - 1; ++i) {
+      memcpy(&history[i], &history[i + 1], sizeof(HistoryEntry));
+    }
+    historyHead = HISTORY_MAX - 1;
+    historyCount = HISTORY_MAX;
+  } else {
+    historyHead = historyCount;
+    historyCount++;
+  }
+  HistoryEntry& entry = history[historyHead];
+  memcpy(entry.cells, cells, sizeof(cells));
+  entry.playerR = playerR;
+  entry.playerC = playerC;
+  entry.pushes = pushes;
+}
+
+bool SokobanBoard::popHistory() {
+  if (historyCount == 0) return false;
+  historyCount--;
+  HistoryEntry& entry = history[historyCount];
+  memcpy(cells, entry.cells, sizeof(cells));
+  playerR = entry.playerR;
+  playerC = entry.playerC;
+  pushes = entry.pushes;
+  return true;
+}
+
+void SokobanBoard::undo() { popHistory(); }
+
+bool SokobanBoard::canUndo() const { return historyCount > 0; }
