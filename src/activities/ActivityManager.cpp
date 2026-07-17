@@ -7,6 +7,7 @@
 
 #include "OpdsServerStore.h"
 #include "apps/AppsMenuActivity.h"
+#include "apps/sokoban/SokobanGameActivity.h"
 #include "apps/sudoku/SudokuMenuActivity.h"
 #include "boot_sleep/BootActivity.h"
 #include "boot_sleep/SleepActivity.h"
@@ -20,7 +21,6 @@
 #include "settings/OpdsServerListActivity.h"
 #include "settings/SettingsActivity.h"
 #include "util/FullScreenMessageActivity.h"
-
 static portMUX_TYPE activityManagerSpinlock = portMUX_INITIALIZER_UNLOCKED;
 
 void ActivityManager::begin() {
@@ -215,6 +215,8 @@ void ActivityManager::goToFullScreenMessage(std::string message, EpdFontFamily::
 }
 
 void ActivityManager::goToSudoku() { replaceActivity(std::make_unique<SudokuMenuActivity>(renderer, mappedInput)); }
+
+void ActivityManager::goToSokoban() { replaceActivity(std::make_unique<SokobanGameActivity>(renderer, mappedInput)); }
 
 void ActivityManager::goHome(HomeMenuItem initialMenuItem) {
   if (initialMenuItem == HomeMenuItem::NONE && currentActivity) {

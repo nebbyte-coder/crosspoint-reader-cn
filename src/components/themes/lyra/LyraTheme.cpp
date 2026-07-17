@@ -25,6 +25,7 @@
 #include "components/icons/library.h"
 #include "components/icons/recent.h"
 #include "components/icons/settings2.h"
+#include "components/icons/sokoban.h"
 #include "components/icons/sudoku.h"
 #include "components/icons/text24.h"
 #include "components/icons/transfer.h"
@@ -82,6 +83,8 @@ const uint8_t* iconForName(UIIcon icon, int size) {
         return AppsIcon;
       case UIIcon::Sudoku:
         return SudokuIcon;
+      case UIIcon::Sokoban:
+        return SokobanIcon;
       default:
         return nullptr;
     }

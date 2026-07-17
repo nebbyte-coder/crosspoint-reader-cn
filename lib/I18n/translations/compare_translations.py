@@ -18,7 +18,7 @@ def load_yaml(path):
 
 def main():
     if len(sys.argv) != 3:
-        print("用法: python compare_translations.py <english.yaml> <chinese.yaml>")
+        print("用法: python compare_translations.py english.yaml chinese.yaml")
         sys.exit(1)
 
     en_path = sys.argv[1]

@@ -128,6 +128,7 @@ enum UIIcon {
   Bookmark,
   Sudoku,
   Apps,
+  Sokoban,
 };
 
 enum class KeyboardKeyType { Normal, Shift, Mode, Space, Del, Ok, Disabled };
