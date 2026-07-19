@@ -5,7 +5,7 @@
 struct SokobanSaveSlot {
   int currentLevel = 0;
   int moves = 0;
-  bool hasBoard = false;  // 始终false
+  bool hasBoard = false;
 };
 
 class SokobanStore {

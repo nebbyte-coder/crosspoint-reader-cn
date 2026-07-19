@@ -1,5 +1,7 @@
 #include "SokobanBoard.h"
 
+#include <HalStorage.h>
+
 #include <cstdio>
 
 void SokobanBoard::clear() {
@@ -58,7 +60,7 @@ bool SokobanBoard::loadFromStrings(const char* const* levelData, int numRows) {
     }
     if (c > cols) cols = c;
   }
-  // 将所有EMPTY视为FLOOR
+
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       if (cells[r][c] == EMPTY) cells[r][c] = FLOOR;
@@ -76,7 +78,6 @@ bool SokobanBoard::movePlayer(int dr, int dc) {
   Cell target = cells[nr][nc];
   if (target == WALL) return false;
 
-  // 先保存历史
   pushHistory();
 
   if (target == BOX || target == BOX_ON_TARGET) {
@@ -86,7 +87,6 @@ bool SokobanBoard::movePlayer(int dr, int dc) {
     Cell behind = cells[nnr][nnc];
     if (behind == WALL || behind == BOX || behind == BOX_ON_TARGET) return false;
 
-    // 移动箱子
     if (behind == TARGET) {
       cells[nnr][nnc] = BOX_ON_TARGET;
     } else {
@@ -100,7 +100,6 @@ bool SokobanBoard::movePlayer(int dr, int dc) {
     pushes++;
   }
 
-  // 移动玩家
   Cell oldPos = cells[playerR][playerC];
   if (oldPos == PLAYER_ON_TARGET) {
     cells[playerR][playerC] = TARGET;
@@ -130,8 +129,6 @@ bool SokobanBoard::isWin() const {
 }
 void SokobanBoard::pushHistory() {
   if (historyCount >= HISTORY_MAX) {
-    // 覆盖最旧的（循环覆盖）
-    // 简单做法：当满时，将整个数组向前移动一位
     for (int i = 0; i < HISTORY_MAX - 1; ++i) {
       memcpy(&history[i], &history[i + 1], sizeof(HistoryEntry));
     }
@@ -162,3 +159,25 @@ bool SokobanBoard::popHistory() {
 void SokobanBoard::undo() { popHistory(); }
 
 bool SokobanBoard::canUndo() const { return historyCount > 0; }
+
+bool SokobanBoard::loadFromFile(HalFile& f) {
+  clear();
+  uint8_t h, w;
+  if (f.read(&h, 1) != 1 || f.read(&w, 1) != 1) return false;
+  rows = h;
+  cols = w;
+  if (rows <= 0 || rows > MAX_ROWS || cols <= 0 || cols > MAX_COLS) return false;
+
+  uint8_t buffer[MAX_COLS];
+  for (int r = 0; r < rows; ++r) {
+    if (f.read(buffer, cols) != cols) return false;
+    for (int c = 0; c < cols; ++c) {
+      cells[r][c] = static_cast<Cell>(buffer[c]);
+      if (cells[r][c] == PLAYER || cells[r][c] == PLAYER_ON_TARGET) {
+        playerR = r;
+        playerC = c;
+      }
+    }
+  }
+  return true;
+}

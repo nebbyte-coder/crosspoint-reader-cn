@@ -8,7 +8,6 @@
 #include "../../../components/UITheme.h"
 #include "../../../fontIds.h"
 #include "../GameUi.h"
-#include "levels.h"
 
 SokobanGameActivity::SokobanGameActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
     : Activity("Sokoban", renderer, mappedInput) {
@@ -21,10 +20,43 @@ void SokobanGameActivity::onEnter() {
   Activity::onEnter();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
+  if (!Storage.exists(SD_LEVEL_PATH)) {
+    LOG_ERR("SOK", "SD card level file not found");
+    activityManager.goToApps();
+    return;
+  }
+
+  totalLevels = 0;
+  HalFile f;
+  if (!Storage.openFileForRead("SDK", SD_LEVEL_PATH, f)) {
+    LOG_ERR("SOK", "Cannot open level file");
+    activityManager.goToApps();
+    return;
+  }
+
+  uint32_t offset = 0;
+  while (totalLevels < MAX_LEVELS) {
+    levelOffsets[totalLevels] = offset;
+    uint8_t h, w;
+    if (f.read(&h, 1) != 1 || f.read(&w, 1) != 1) break;
+    uint32_t dataSize = w * h;
+    offset += 2 + dataSize;
+    f.seek(offset);
+    totalLevels++;
+  }
+  f.close();
+
+  if (totalLevels == 0) {
+    LOG_ERR("SOK", "No levels found");
+    activityManager.goToApps();
+    return;
+  }
+
+  // 读取存档...
   SokobanSaveSlot slot;
   if (SokobanStore::load(slot)) {
     currentLevel = slot.currentLevel;
-    if (currentLevel < 0 || currentLevel >= TOTAL_LEVELS) currentLevel = 0;
+    if (currentLevel < 0 || currentLevel >= totalLevels) currentLevel = 0;
     moves = slot.moves;
   } else {
     currentLevel = 0;
@@ -40,13 +72,26 @@ void SokobanGameActivity::onExit() {
 }
 
 void SokobanGameActivity::loadLevel(int idx) {
-  if (idx < 0 || idx >= TOTAL_LEVELS) idx = 0;
-  if (levelHeights[idx] <= 0 || levelHeights[idx] > SokobanBoard::MAX_ROWS) {
-    LOG_ERR("SOK", "Invalid level height %d", levelHeights[idx]);
-    idx = 0;
-  }
+  if (idx < 0 || idx >= totalLevels) idx = 0;
   currentLevel = idx;
-  board.loadFromStrings(levels[idx], levelHeights[idx]);
+
+  HalFile f;
+  if (!Storage.openFileForRead("SDK", SD_LEVEL_PATH, f)) {
+    LOG_ERR("SOK", "Cannot open level file");
+    activityManager.goToApps();
+    return;
+  }
+
+  f.seek(levelOffsets[idx]);
+
+  if (!board.loadFromFile(f)) {
+    LOG_ERR("SOK", "Failed to load level %d", idx);
+    f.close();
+    activityManager.goToApps();
+    return;
+  }
+  f.close();
+
   moves = 0;
   state = State::Playing;
   heldDr = heldDc = 0;
@@ -59,7 +104,7 @@ void SokobanGameActivity::loop() {
   if (state == State::Won) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) ||
         mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-      if (currentLevel + 1 < TOTAL_LEVELS) {
+      if (currentLevel + 1 < totalLevels) {
         loadLevel(currentLevel + 1);
         scheduleSave();
       } else {
@@ -72,7 +117,6 @@ void SokobanGameActivity::loop() {
   }
 
   if (state == State::LevelSelect) {
-    // 单次按键
     if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
       if (selectedLevel > 0) {
         selectedLevel--;
@@ -83,7 +127,7 @@ void SokobanGameActivity::loop() {
       lastLevelSelectScrollTime = now;
       isFirstLevelSelectHold = true;
     } else if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
-      if (selectedLevel < TOTAL_LEVELS - 1) {
+      if (selectedLevel < totalLevels - 1) {
         selectedLevel++;
         if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS) scrollOffset++;
         requestUpdate();
@@ -91,37 +135,70 @@ void SokobanGameActivity::loop() {
       heldLevelSelectDir = 1;
       lastLevelSelectScrollTime = now;
       isFirstLevelSelectHold = true;
+    } else if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
+      int newLevel = selectedLevel - 20;
+      if (newLevel < 0) newLevel = 0;
+      if (newLevel != selectedLevel) {
+        selectedLevel = newLevel;
+        if (selectedLevel < scrollOffset)
+          scrollOffset = selectedLevel;
+        else if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS)
+          scrollOffset = selectedLevel - MENU_VISIBLE_ITEMS + 1;
+        requestUpdate();
+      }
+      heldLevelSelectDir = -20;
+      lastLevelSelectScrollTime = now;
+      isFirstLevelSelectHold = true;
+    } else if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
+      int newLevel = selectedLevel + 20;
+      if (newLevel >= totalLevels) newLevel = totalLevels - 1;
+      if (newLevel != selectedLevel) {
+        selectedLevel = newLevel;
+        if (selectedLevel < scrollOffset)
+          scrollOffset = selectedLevel;
+        else if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS)
+          scrollOffset = selectedLevel - MENU_VISIBLE_ITEMS + 1;
+        requestUpdate();
+      }
+      heldLevelSelectDir = 20;
+      lastLevelSelectScrollTime = now;
+      isFirstLevelSelectHold = true;
     }
 
-    // 长按连续滚动
     if (heldLevelSelectDir != 0) {
       bool held = false;
       if (heldLevelSelectDir == -1 && mappedInput.isHeld(MappedInputManager::Button::Up))
         held = true;
       else if (heldLevelSelectDir == 1 && mappedInput.isHeld(MappedInputManager::Button::Down))
         held = true;
+      else if (heldLevelSelectDir == -20 && mappedInput.isHeld(MappedInputManager::Button::Left))
+        held = true;
+      else if (heldLevelSelectDir == 20 && mappedInput.isHeld(MappedInputManager::Button::Right))
+        held = true;
 
       if (held) {
         uint32_t delay = isFirstLevelSelectHold ? 350 : 180;
         if (now - lastLevelSelectScrollTime >= delay) {
-          if (heldLevelSelectDir == -1 && selectedLevel > 0) {
-            selectedLevel--;
-            if (selectedLevel < scrollOffset) scrollOffset--;
-            requestUpdate();
-          } else if (heldLevelSelectDir == 1 && selectedLevel < TOTAL_LEVELS - 1) {
-            selectedLevel++;
-            if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS) scrollOffset++;
+          int step = abs(heldLevelSelectDir);
+          int newLevel = selectedLevel + (heldLevelSelectDir > 0 ? step : -step);
+          if (newLevel < 0) newLevel = 0;
+          if (newLevel >= totalLevels) newLevel = totalLevels - 1;
+          if (newLevel != selectedLevel) {
+            selectedLevel = newLevel;
+            if (selectedLevel < scrollOffset)
+              scrollOffset = selectedLevel;
+            else if (selectedLevel >= scrollOffset + MENU_VISIBLE_ITEMS)
+              scrollOffset = selectedLevel - MENU_VISIBLE_ITEMS + 1;
             requestUpdate();
           }
           lastLevelSelectScrollTime = now;
           isFirstLevelSelectHold = false;
         }
       } else {
-        heldLevelSelectDir = 0;  // 松开
+        heldLevelSelectDir = 0;
       }
     }
 
-    // 确认/返回
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
       loadLevel(selectedLevel);
       scheduleSave();
@@ -133,7 +210,6 @@ void SokobanGameActivity::loop() {
     return;
   }
 
-  // Playing 状态
   handleInput();
   if (saveDebouncer.consumeIfDue(millis())) {
     flushSave();
@@ -143,7 +219,6 @@ void SokobanGameActivity::loop() {
 void SokobanGameActivity::handleInput() {
   const uint32_t now = millis();
 
-  // 方向键移动
   if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
     move(-1, 0);
     heldDr = -1;
@@ -170,7 +245,6 @@ void SokobanGameActivity::handleInput() {
     isFirstMoveAfterHold = true;
   }
 
-  // 长按连续移动
   if (heldDr != 0 || heldDc != 0) {
     bool held = false;
     if (heldDr == -1 && mappedInput.isHeld(MappedInputManager::Button::Up))
@@ -194,12 +268,10 @@ void SokobanGameActivity::handleInput() {
     }
   }
 
-  // 电源键撤销
   if (mappedInput.wasReleased(MappedInputManager::Button::Power)) {
     undo();
   }
 
-  // 确认键打开关卡选择
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     selectedLevel = currentLevel;
     scrollOffset = (selectedLevel / MENU_VISIBLE_ITEMS) * MENU_VISIBLE_ITEMS;
@@ -207,7 +279,6 @@ void SokobanGameActivity::handleInput() {
     requestUpdate();
   }
 
-  // 返回键退出游戏（回到应用列表），并保存进度
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     flushSave();
     activityManager.goToApps();
@@ -243,7 +314,7 @@ void SokobanGameActivity::resetLevel() {
 
 void SokobanGameActivity::onWin() {
   state = State::Won;
-  if (currentLevel + 1 < TOTAL_LEVELS) {
+  if (currentLevel + 1 < totalLevels) {
     SokobanStore::saveLevel(currentLevel + 1, 0);
   }
   requestUpdate();
@@ -281,7 +352,7 @@ void SokobanGameActivity::drawHUD() {
   renderer.drawLine(0, TITLE_BAR_H, sw, TITLE_BAR_H, true);
 
   char buf[64];
-  snprintf(buf, sizeof(buf), "%s %d/%d", tr(STR_SOKOBAN_TITLE), currentLevel + 1, TOTAL_LEVELS);
+  snprintf(buf, sizeof(buf), "%s %d/%d", tr(STR_SOKOBAN_TITLE), currentLevel + 1, totalLevels);
   renderer.drawText(UI_12_FONT_ID, 12, 8, buf);
 
   snprintf(buf, sizeof(buf), "%s:%d %s:%d", tr(STR_SOKOBAN_MOVES), moves, tr(STR_SOKOBAN_PUSHES), board.pushes);
@@ -319,7 +390,7 @@ void SokobanGameActivity::drawBoard() {
         case SokobanBoard::WALL:
           renderer.drawRect(x, y, cellSize, cellSize, 2, true);
           {
-            int dotSize = (cellSize >= 16) ? 2 : 1;  // 格子大时用2px，小时用1px
+            int dotSize = (cellSize >= 16) ? 2 : 1;
             int margin = cellSize / 4;
             renderer.fillRect(x + margin, y + margin, dotSize, dotSize, true);
             renderer.fillRect(x + cellSize - margin - dotSize, y + margin, dotSize, dotSize, true);
@@ -341,53 +412,13 @@ void SokobanGameActivity::drawBoard() {
           renderer.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4, true);
           renderer.drawRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2, 2, false);
           break;
-        case SokobanBoard::PLAYER: {
-            // 白色笑脸：空心方框脸 + 黑色眼睛 + 得意歪嘴笑（左边短右边长）
-            int faceSize = cellSize - 6;
-            int faceX = x + 3;
-            int faceY = y + 3;
-            // 脸轮廓（黑色空心方框）
-            renderer.drawRect(faceX, faceY, faceSize, faceSize, 2, true);
-            // 眼睛（两个黑色小矩形）
-            int eyeSize = 2;
-            int eyeY = faceY + faceSize / 4;
-            renderer.fillRect(faceX + faceSize / 4, eyeY, eyeSize, eyeSize, true);
-            renderer.fillRect(faceX + 3 * faceSize / 4, eyeY, eyeSize, eyeSize, true);
-            // 嘴巴：左边短、右边长的得意歪嘴笑
-            int mouthY_left = faceY + faceSize / 2;          // 左嘴角较高
-            int mouthY_mid = faceY + 3 * faceSize / 5;       // 弧底稍低
-            int mouthY_right = faceY + 2 * faceSize / 3;     // 右嘴角更低
-            int mouthX_left = faceX + faceSize / 3;           // 左嘴角（靠近中心，使左段短）
-            int mouthX_mid = faceX + faceSize / 2;            // 中点
-            int mouthX_right = faceX + 3 * faceSize / 4;      // 右嘴角（远离中心，使右段长）
-            renderer.drawLine(mouthX_left, mouthY_left, mouthX_mid, mouthY_mid, true);
-            renderer.drawLine(mouthX_mid, mouthY_mid, mouthX_right, mouthY_right, true);
-            break;
-        }
-        case SokobanBoard::PLAYER_ON_TARGET: {
-            // 白色笑脸 + 目标框
-            int faceSize = cellSize - 6;
-            int faceX = x + 3;
-            int faceY = y + 3;
-            renderer.drawRect(faceX, faceY, faceSize, faceSize, 2, true);
-            // 眼睛
-            int eyeSize = 2;
-            int eyeY = faceY + faceSize / 4;
-            renderer.fillRect(faceX + faceSize / 4, eyeY, eyeSize, eyeSize, true);
-            renderer.fillRect(faceX + 3 * faceSize / 4, eyeY, eyeSize, eyeSize, true);
-            // 嘴巴：左边短、右边长的得意歪嘴笑
-            int mouthY_left = faceY + faceSize / 2;
-            int mouthY_mid = faceY + 3 * faceSize / 5;
-            int mouthY_right = faceY + 2 * faceSize / 3;
-            int mouthX_left = faceX + faceSize / 3;
-            int mouthX_mid = faceX + faceSize / 2;
-            int mouthX_right = faceX + 3 * faceSize / 4;
-            renderer.drawLine(mouthX_left, mouthY_left, mouthX_mid, mouthY_mid, true);
-            renderer.drawLine(mouthX_mid, mouthY_mid, mouthX_right, mouthY_right, true);
-            // 目标框（空心矩形）
-            renderer.drawRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2, 2, true);
-            break;
-        }
+        case SokobanBoard::PLAYER:
+          renderer.fillRect(x + 4, y + 4, cellSize - 8, cellSize - 8, true);
+          break;
+        case SokobanBoard::PLAYER_ON_TARGET:
+          renderer.fillRect(x + 4, y + 4, cellSize - 8, cellSize - 8, true);
+          renderer.drawRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2, 2, false);
+          break;
       }
     }
   }
@@ -408,20 +439,17 @@ void SokobanGameActivity::drawLevelSelect() {
   const int sh = renderer.getScreenHeight();
   const int itemH = 30;
   const int listTop = 36;
-  const int listBottom = sh - 62;  // 留出底部提示空间
+  const int listBottom = sh - 62;
   const int visibleCount = (listBottom - listTop) / itemH;
   if (visibleCount <= 0) return;
 
-  // 标题
   char buf[64];
-  snprintf(buf, sizeof(buf), "%s (%d)", tr(STR_SOKOBAN_TITLE), TOTAL_LEVELS);
+  snprintf(buf, sizeof(buf), "%s (%d)", tr(STR_SOKOBAN_TITLE), totalLevels);
   renderer.drawCenteredText(UI_12_FONT_ID, 8, buf);
 
-  // 下划线
   renderer.drawLine(0, 35, sw, 35, true);
 
-  // 绘制可见关卡
-  for (int i = 0; i < visibleCount && (scrollOffset + i) < TOTAL_LEVELS; ++i) {
+  for (int i = 0; i < visibleCount && (scrollOffset + i) < totalLevels; ++i) {
     int levelIdx = scrollOffset + i;
     int y = listTop + i * itemH;
 
@@ -433,7 +461,6 @@ void SokobanGameActivity::drawLevelSelect() {
     renderer.drawText(UI_12_FONT_ID, 22, y + 4, buf);
   }
 
-  // 底部提示
   renderer.drawLine(0, sh - 49, sw, sh - 49, true);
   renderer.drawCenteredText(UI_10_FONT_ID, sh - 35, tr(STR_SOKOBAN_SELECT_HINT));
 }

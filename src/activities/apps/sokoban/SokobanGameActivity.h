@@ -26,19 +26,16 @@ class SokobanGameActivity final : public Activity {
   int moves = 0;
   GameSaveDebouncer saveDebouncer;
 
-  // 游戏中长按连续移动
   static constexpr uint32_t kInitialHoldDelayMs = 350;
   static constexpr uint32_t kRepeatMoveIntervalMs = 220;
   uint32_t lastCursorMoveTime = 0;
   bool isFirstMoveAfterHold = false;
   int heldDr = 0, heldDc = 0;
 
-  // 关卡选择长按连续滚动
   uint32_t lastLevelSelectScrollTime = 0;
   bool isFirstLevelSelectHold = false;
   int heldLevelSelectDir = 0;  // 1向下，-1向上
 
-  // 关卡选择
   int selectedLevel = 0;
   int scrollOffset = 0;
   static constexpr int MENU_VISIBLE_ITEMS = 10;
@@ -60,4 +57,8 @@ class SokobanGameActivity final : public Activity {
   static constexpr int TITLE_BAR_H = 34;
   static constexpr int BOARD_TOP = TITLE_BAR_H + 4;
   static constexpr int BOARD_BOTTOM = 780;
+  static constexpr const char* SD_LEVEL_PATH = "/sokoban/levels.bin";
+  static constexpr int MAX_LEVELS = 3000;
+  int totalLevels = 0;
+  uint32_t levelOffsets[MAX_LEVELS];
 };

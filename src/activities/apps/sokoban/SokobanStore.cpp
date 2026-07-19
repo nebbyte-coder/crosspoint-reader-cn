@@ -6,7 +6,7 @@
 namespace {
 constexpr const char* kSavePath = "/.crosspoint/sokoban.bin";
 constexpr const char* kDir = "/.crosspoint";
-constexpr uint8_t SAVE_VERSION = 2;  // 版本升级
+constexpr uint8_t SAVE_VERSION = 2;
 
 bool ensureDir() {
   if (Storage.exists(kDir)) return true;
@@ -24,7 +24,6 @@ bool SokobanStore::save(const SokobanSaveSlot& slot) {
       sizeof(slot.currentLevel))
     return false;
   if (f.write(reinterpret_cast<const uint8_t*>(&slot.moves), sizeof(slot.moves)) != sizeof(slot.moves)) return false;
-  // 不保存棋盘
   f.flush();
   return true;
 }

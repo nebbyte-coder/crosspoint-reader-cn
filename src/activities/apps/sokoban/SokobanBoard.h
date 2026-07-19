@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
-
+class HalFile;
 class SokobanBoard {
  public:
   static constexpr int MAX_ROWS = 20;
@@ -21,13 +21,13 @@ class SokobanBoard {
   bool loadFromStrings(const char* const* levelData, int numRows);
   bool movePlayer(int dr, int dc);
   bool isWin() const;
+  bool loadFromFile(HalFile& f);
 
-  // 撤销
   void undo();
   bool canUndo() const;
 
  private:
-  static constexpr int HISTORY_MAX = 8;  // 最多撤销 8步
+  static constexpr int HISTORY_MAX = 10;
   struct HistoryEntry {
     Cell cells[MAX_ROWS][MAX_COLS];
     int playerR;
