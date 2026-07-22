@@ -28,6 +28,7 @@ void WifiSelectionActivity::onEnter() {
   // Reset state
   selectedNetworkIndex = 0;
   networks.clear();
+  realNetworkCount = 0;
   state = WifiSelectionState::SCANNING;
   selectedSSID.clear();
   connectedIP.clear();
@@ -114,9 +115,13 @@ void WifiSelectionActivity::processWifiScanResults() {
   }
 
   if (scanResult == WIFI_SCAN_FAILED) {
+    networks.clear();
+    realNetworkCount = 0;
+    appendHiddenNetworkEntry();
     autoConnecting = false;
     manualNetworkListRequested = false;
     state = WifiSelectionState::NETWORK_LIST;
+    selectedNetworkIndex = 0;
     requestUpdate();
     return;
   }
@@ -158,6 +163,9 @@ void WifiSelectionActivity::processWifiScanResults() {
     return a.rssi > b.rssi;
   });
 
+  realNetworkCount = networks.size();
+  appendHiddenNetworkEntry();
+
   WiFi.scanDelete();
 
   if (autoConnecting && !manualNetworkListRequested && tryNextSavedNetworkFromScan()) {
@@ -171,12 +179,30 @@ void WifiSelectionActivity::processWifiScanResults() {
   requestUpdate();
 }
 
+void WifiSelectionActivity::appendHiddenNetworkEntry() {
+  // Synthetic list entry that lets the user type an SSID that is not broadcast.
+  // ESP32 can join hidden APs as long as the SSID is supplied to WiFi.begin().
+  WifiNetworkInfo placeholder;
+  placeholder.rssi = 0;
+  placeholder.isEncrypted = true;  // Treated as encrypted; an empty password still connects open APs
+  placeholder.hasSavedPassword = false;
+  placeholder.isHiddenPlaceholder = true;
+  networks.push_back(std::move(placeholder));
+}
+
 void WifiSelectionActivity::selectNetwork(const int index) {
   if (index < 0 || index >= static_cast<int>(networks.size())) {
     return;
   }
 
   const auto& network = networks[index];
+
+  // Synthetic "Add hidden network..." entry: prompt the user to type the SSID first
+  if (network.isHiddenPlaceholder) {
+    promptHiddenSsid();
+    return;
+  }
+
   selectedSSID = network.ssid;
   selectedRequiresPassword = network.isEncrypted;
   usedSavedPassword = false;
@@ -195,25 +221,55 @@ void WifiSelectionActivity::selectNetwork(const int index) {
   }
 
   if (selectedRequiresPassword) {
-    // Show password entry
-    state = WifiSelectionState::PASSWORD_ENTRY;
-    // Don't allow screen updates while changing activity
-    startActivityForResult(std::make_unique<KeyboardEntryActivity>(renderer, mappedInput, tr(STR_ENTER_WIFI_PASSWORD),
-                                                                   "",  // No initial text
-                                                                   64,  // Max password length
-                                                                   InputType::Password),
-                           [this](const ActivityResult& result) {
-                             if (result.isCancelled) {
-                               state = WifiSelectionState::NETWORK_LIST;
-                             } else {
-                               enteredPassword = std::get<KeyboardResult>(result.data).text;
-                               // state will be updated in next loop iteration
-                             }
-                           });
+    promptPasswordEntry();
   } else {
     // Connect directly for open networks
     attemptConnection();
   }
+}
+
+void WifiSelectionActivity::promptPasswordEntry() {
+  // Show password entry
+  state = WifiSelectionState::PASSWORD_ENTRY;
+  // Don't allow screen updates while changing activity
+  startActivityForResult(std::make_unique<KeyboardEntryActivity>(renderer, mappedInput, tr(STR_ENTER_WIFI_PASSWORD),
+                                                                 "",  // No initial text
+                                                                 64,  // Max password length
+                                                                 InputType::Password),
+                         [this](const ActivityResult& result) {
+                           if (result.isCancelled) {
+                             state = WifiSelectionState::NETWORK_LIST;
+                           } else {
+                             enteredPassword = std::get<KeyboardResult>(result.data).text;
+                             // state will be updated in next loop iteration
+                           }
+                         });
+}
+
+void WifiSelectionActivity::promptHiddenSsid() {
+  selectedSSID.clear();
+  selectedRequiresPassword = true;  // Hidden networks are usually encrypted; empty password still joins open APs
+  usedSavedPassword = false;
+  enteredPassword.clear();
+  autoConnecting = false;
+
+  // Suppress rendering during the activity transition (see render()).
+  state = WifiSelectionState::HIDDEN_SSID_ENTRY;
+  startActivityForResult(std::make_unique<KeyboardEntryActivity>(renderer, mappedInput, tr(STR_ENTER_WIFI_SSID),
+                                                                 "",  // No initial text
+                                                                 32,  // Max SSID length (IEEE 802.11: 32 bytes)
+                                                                 InputType::Text),
+                         [this](const ActivityResult& result) {
+                           if (result.isCancelled) {
+                             state = WifiSelectionState::NETWORK_LIST;
+                             return;
+                           }
+                           selectedSSID = std::get<KeyboardResult>(result.data).text;
+                           if (selectedSSID.empty()) {
+                             state = WifiSelectionState::NETWORK_LIST;
+                           }
+                           // Otherwise stay in HIDDEN_SSID_ENTRY; loop() continues the flow.
+                         });
 }
 
 bool WifiSelectionActivity::hasAttemptedAutoSsid(const std::string& ssid) const {
@@ -298,6 +354,11 @@ void WifiSelectionActivity::attemptConnection() {
   WiFi.disconnect(true, true);  // Abort any in-progress SDK auto-connect and clear NVS-saved SSID
   delay(100);
 
+  // Scan all channels so networks with multiple APs use the strongest matching
+  // BSSID instead of the first match found by the framework's default fast scan.
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+  WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+
   // Set hostname so routers show "CrossPoint-Reader-AABBCCDDEEFF" instead of "esp32-XXXXXXXXXXXX"
   String mac = WiFi.macAddress();
   mac.replace(":", "");
@@ -325,6 +386,16 @@ void WifiSelectionActivity::checkConnectionStatus() {
     snprintf(ipStr, sizeof(ipStr), "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
     connectedIP = ipStr;
     autoConnecting = false;
+
+#if defined(ENABLE_SERIAL_LOG) && LOG_LEVEL >= 2
+    uint8_t connectedBssid[6] = {};
+    WiFi.BSSID(connectedBssid);
+    LOG_DBG("WIFI", "Connected BSSID: %02x:%02x:%02x:%02x:%02x:%02x, channel: %d, RSSI: %d dBm",
+            static_cast<unsigned>(connectedBssid[0]), static_cast<unsigned>(connectedBssid[1]),
+            static_cast<unsigned>(connectedBssid[2]), static_cast<unsigned>(connectedBssid[3]),
+            static_cast<unsigned>(connectedBssid[4]), static_cast<unsigned>(connectedBssid[5]), WiFi.channel(),
+            WiFi.RSSI());
+#endif
 
     // Sync RTC from NTP on the first successful WiFi connection only. The DS3231
     // drifts ~2 ppm so one sync is enough; users can force a re-sync from
@@ -422,6 +493,22 @@ void WifiSelectionActivity::loop() {
     return;
   }
 
+  // Reached once the hidden-network SSID has been entered (and was non-empty).
+  if (state == WifiSelectionState::HIDDEN_SSID_ENTRY) {
+    const auto* savedCred = WIFI_STORE.findCredential(selectedSSID);
+    if (savedCred && !savedCred->password.empty()) {
+      // We already know this hidden network - connect with the saved password
+      enteredPassword = savedCred->password;
+      usedSavedPassword = true;
+      LOG_DBG("WiFi", "Using saved password for hidden network %s", selectedSSID.c_str());
+      attemptConnection();
+    } else {
+      // Prompt for the password (empty password connects to open hidden APs)
+      promptPasswordEntry();
+    }
+    return;
+  }
+
   if (state == WifiSelectionState::PASSWORD_ENTRY) {
     // Reach here once password entry finished in subactivity
     attemptConnection();
@@ -430,6 +517,34 @@ void WifiSelectionActivity::loop() {
 
   // Handle save prompt state
   if (state == WifiSelectionState::SAVE_PROMPT) {
+    {
+      const Rect screen = UITheme::getInstance().getScreenSafeArea(renderer, true, false);
+      const auto height = renderer.getLineHeight(UI_10_FONT_ID);
+      const int buttonY = screen.y + (screen.height - height * 3) / 2 + 80;
+      constexpr int buttonWidth = 60;
+      constexpr int buttonSpacing = 30;
+      const int startX = screen.x + (screen.width - (buttonWidth * 2 + buttonSpacing)) / 2;
+      int touchedOption = -1;
+      const auto touch = mappedInput.colTouch(touchedOption, startX - 8, buttonWidth + buttonSpacing, 2, buttonY - 8,
+                                              buttonY + height + 8, buttonWidth + 16);
+      if (touch == MappedInputManager::RowTouch::Down) {
+        if (savePromptSelection != touchedOption) {
+          savePromptSelection = touchedOption;
+          requestUpdate();
+        }
+        return;
+      }
+      if (touch == MappedInputManager::RowTouch::Tap) {
+        savePromptSelection = touchedOption;
+        if (savePromptSelection == 0) {
+          RenderLock lock(*this);
+          WIFI_STORE.addCredential(selectedSSID, enteredPassword);
+        }
+        onComplete(true);
+        return;
+      }
+    }
+
     if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
         mappedInput.wasPressed(MappedInputManager::Button::Left)) {
       if (savePromptSelection > 0) {
@@ -459,6 +574,39 @@ void WifiSelectionActivity::loop() {
 
   // Handle forget prompt state (connection failed with saved credentials)
   if (state == WifiSelectionState::FORGET_PROMPT) {
+    {
+      const Rect screen = UITheme::getInstance().getScreenSafeArea(renderer, true, false);
+      const auto height = renderer.getLineHeight(UI_10_FONT_ID);
+      const int buttonY = screen.y + (screen.height - height * 3) / 2 + 80;
+      constexpr int buttonWidth = 120;
+      constexpr int buttonSpacing = 30;
+      const int startX = screen.x + (screen.width - (buttonWidth * 2 + buttonSpacing)) / 2;
+      int touchedOption = -1;
+      const auto touch = mappedInput.colTouch(touchedOption, startX - 8, buttonWidth + buttonSpacing, 2, buttonY - 8,
+                                              buttonY + height + 8, buttonWidth + 16);
+      if (touch == MappedInputManager::RowTouch::Down) {
+        if (forgetPromptSelection != touchedOption) {
+          forgetPromptSelection = touchedOption;
+          requestUpdate();
+        }
+        return;
+      }
+      if (touch == MappedInputManager::RowTouch::Tap) {
+        forgetPromptSelection = touchedOption;
+        if (forgetPromptSelection == 1) {
+          RenderLock lock(*this);
+          WIFI_STORE.removeCredential(selectedSSID);
+          const auto network = find_if(networks.begin(), networks.end(),
+                                       [this](const WifiNetworkInfo& net) { return net.ssid == selectedSSID; });
+          if (network != networks.end()) {
+            network->hasSavedPassword = false;
+          }
+        }
+        startWifiScan();
+        return;
+      }
+    }
+
     if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
         mappedInput.wasPressed(MappedInputManager::Button::Left)) {
       if (forgetPromptSelection > 0) {
@@ -554,6 +702,35 @@ void WifiSelectionActivity::loop() {
       }
     }
 
+    if (!networks.empty()) {
+      const auto& metrics = UITheme::getInstance().getMetrics();
+      Rect screen = UITheme::getInstance().getScreenSafeArea(renderer, true, false);
+      const int contentTop =
+          screen.y + metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing;
+      const int contentHeight = screen.height - contentTop - metrics.verticalSpacing * 2;
+      int touchSel = static_cast<int>(selectedNetworkIndex);
+      const auto listTouch =
+          handleListTouch(touchSel, static_cast<int>(networks.size()), contentTop, contentHeight, false);
+      if (listTouch != ListTouchResult::None) {
+        selectedNetworkIndex = static_cast<size_t>(touchSel);
+        if (listTouch == ListTouchResult::Activated) selectNetwork(selectedNetworkIndex);
+        return;
+      }
+
+      const int pageItems = GUI.getListPageItems(contentHeight, false);
+      const auto swipe = mappedInput.wasSwipe();
+      if (swipe == MappedInputManager::SwipeDir::Up) {
+        selectedNetworkIndex = ButtonNavigator::nextPageIndex(selectedNetworkIndex, networks.size(), pageItems);
+        requestUpdate();
+        return;
+      }
+      if (swipe == MappedInputManager::SwipeDir::Down) {
+        selectedNetworkIndex = ButtonNavigator::previousPageIndex(selectedNetworkIndex, networks.size(), pageItems);
+        requestUpdate();
+        return;
+      }
+    }
+
     // Handle navigation
     buttonNavigator.onNext([this] {
       selectedNetworkIndex = ButtonNavigator::nextIndex(selectedNetworkIndex, networks.size());
@@ -582,9 +759,9 @@ std::string WifiSelectionActivity::getSignalStrengthIndicator(const int32_t rssi
 }
 
 void WifiSelectionActivity::render(RenderLock&&) {
-  // Don't render if we're in PASSWORD_ENTRY state - we're just transitioning
+  // Don't render if we're in a keyboard-entry state - we're just transitioning
   // from the keyboard subactivity back to the main activity
-  if (state == WifiSelectionState::PASSWORD_ENTRY) {
+  if (state == WifiSelectionState::PASSWORD_ENTRY || state == WifiSelectionState::HIDDEN_SSID_ENTRY) {
     return;
   }
 
@@ -596,7 +773,7 @@ void WifiSelectionActivity::render(RenderLock&&) {
 
   // Draw header
   char countStr[32];
-  snprintf(countStr, sizeof(countStr), tr(STR_NETWORKS_FOUND), networks.size());
+  snprintf(countStr, sizeof(countStr), tr(STR_NETWORKS_FOUND), realNetworkCount);
   GUI.drawHeader(renderer, Rect{screen.x, screen.y + metrics.topPadding, screen.width, metrics.headerHeight},
                  tr(STR_WIFI_NETWORKS), countStr);
   GUI.drawSubHeader(
@@ -613,6 +790,9 @@ void WifiSelectionActivity::render(RenderLock&&) {
       break;
     case WifiSelectionState::NETWORK_LIST:
       renderNetworkList(&screen, &metrics);
+      break;
+    case WifiSelectionState::HIDDEN_SSID_ENTRY:
+      // Transitioning to/from the SSID keyboard subactivity - nothing to draw
       break;
     case WifiSelectionState::CONNECTING:
       renderConnecting(&screen, &metrics);
@@ -647,9 +827,17 @@ void WifiSelectionActivity::renderNetworkList(const Rect* screen, const ThemeMet
     int contentHeight = screen->height - contentTop - metrics->verticalSpacing * 2;
     GUI.drawList(
         renderer, Rect{screen->x, contentTop, screen->width, contentHeight}, static_cast<int>(networks.size()),
-        selectedNetworkIndex, [this](int index) { return networks[index].ssid; }, nullptr, nullptr,
+        selectedNetworkIndex,
         [this](int index) {
-          auto network = networks[index];
+          const auto& network = networks[index];
+          return network.isHiddenPlaceholder ? std::string(tr(STR_ADD_HIDDEN_NETWORK)) : network.ssid;
+        },
+        nullptr, nullptr,
+        [this](int index) {
+          const auto& network = networks[index];
+          if (network.isHiddenPlaceholder) {
+            return std::string();
+          }
           return std::string(network.hasSavedPassword ? "+ " : "") + (network.isEncrypted ? "* " : "") +
                  getSignalStrengthIndicator(network.rssi);
         });

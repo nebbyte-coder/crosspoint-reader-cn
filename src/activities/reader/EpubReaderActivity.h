@@ -39,6 +39,9 @@ class EpubReaderActivity final : public Activity {
   bool skipNextButtonCheck = false;  // Skip button processing for one frame after subactivity exit
   bool automaticPageTurnActive = false;
   bool showBookmarkMessage = false;
+  // "No dictionary set" popup, shown when a lookup is triggered without a configured dictionary.
+  bool showDictionaryMessage = false;
+  unsigned long dictionaryMessageTime = 0UL;
   bool ignoreNextConfirmRelease = false;
   bool currentPageBookmarked = false;
   bool bookmarkRemoved = false;  // true when last toggle removed (controls popup text)
@@ -63,6 +66,15 @@ class EpubReaderActivity final : public Activity {
   SavedPosition savedPositions[MAX_FOOTNOTE_DEPTH] = {};
   int footnoteDepth = 0;
 
+  // Viewport of the last render(), captured so loop()'s lazy partial-extension start
+  // builds with IDENTICAL layout parameters to the pages already rendered (a mismatch
+  // would paginate differently than the partial being extended). 0 = no render yet.
+  uint16_t buildViewportWidth = 0;
+  uint16_t buildViewportHeight = 0;
+  // Set when the lazy extension start failed, so loop() doesn't retry (and log) every
+  // tick; the blocking extension in render() remains the fallback past the watermark.
+  bool partialRebuildStartFailed = false;
+
   // Last position persisted by render()'s saveProgress, used to skip redundant
   // writeAtomic calls on no-op re-renders (menu/bookmark/screenshot).
   int lastSavedSpineIndex = -1;
@@ -85,6 +97,13 @@ class EpubReaderActivity final : public Activity {
   // in one sitting -- instant reopen comes from Section::suspendBuild() persisting the pages
   // already laid out as a partial file on exit/sleep.
   static constexpr int BUILD_WINDOW_AHEAD = 5;
+  // Reopening a partial does NOT immediately restart its extension build (a whole-chapter
+  // re-layout from page 0 -- minutes of background CPU + SD writes on a giant spine, wasted
+  // when the reader never crosses the watermark that session). Instead loop() starts it once
+  // the reader is within this many pages of the watermark: at ~30s per page read and ~100-300ms
+  // per page rebuilt, this margin gives the rebuild ample runway to catch up (and finalize)
+  // before the reader arrives.
+  static constexpr int PARTIAL_REBUILD_START_MARGIN = 15;
   // Show the indexing popup when an initial build must lay out more than this many pages up front
   // (a deep resume/jump into a not-yet-built section), so it isn't a silent wait. Kept independent
   // of the small look-ahead window so ordinary landings stay popup-free.
@@ -103,6 +122,7 @@ class EpubReaderActivity final : public Activity {
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);
   // Opens the reader menu for the current position (short-press Confirm)
   void openReaderMenu();
+  void openDictionaryWordSelect();
   // Returns true if sync acted (launched, or surfaced a save error); false if it was a no-op
   // because no KOReader credentials are stored.
   bool launchKOReaderSync();
@@ -124,6 +144,11 @@ class EpubReaderActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&& lock) override;
+  // Full CPU speed + fast loop ticks while a section build runs: at the low-power
+  // frequency a giant chapter's background rebuild stretches from ~40s to many
+  // minutes, so the reader exits before it can finalize and the next open restarts
+  // it from page 0. Reverts to normal power behavior the moment the build finishes.
+  bool skipLoopDelay() override { return section && section->isBuilding(); }
   bool isReaderActivity() const override { return true; }
   ScreenshotInfo getScreenshotInfo() const override;
   CrossPointPosition getCurrentPosition() const;
