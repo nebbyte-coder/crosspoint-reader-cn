@@ -184,6 +184,9 @@ def load_translations(
         return (1, order_int, fname)
 
     ordered_files = sorted(parsed, key=sort_key)
+    # 只保留 EN 和 ZH_CN
+    allowed_files = {"english.yaml", "chinese.yaml"}
+    ordered_files = [f for f in ordered_files if f in allowed_files]
 
     # Extract metadata
     language_codes: List[str] = []
@@ -554,8 +557,7 @@ def generate_keys_header(
     # If a Language enum value listed here is ever removed, this will fail to
     # compile, signalling that the migration table needs updating.
     v1_codes = [
-        "EN", "ES", "FR", "DE", "CS", "PT", "RU", "SV", "RO", "CA", "UK",
-        "BE", "IT", "PL", "FI", "DA", "NL", "TR", "KK", "HU", "LT", "SI",
+        "EN", "ZH_CN"
     ]
     lines.append("// V1 language.bin migration table (frozen enum order from 2f969a9)")
     lines.append("constexpr Language V1_LANGUAGES[] = {")
